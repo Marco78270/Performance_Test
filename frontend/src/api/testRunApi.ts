@@ -205,3 +205,47 @@ export async function fetchCompletedSimulationClasses(): Promise<string[]> {
   if (!res.ok) throw new Error('Failed to fetch simulation classes')
   return res.json()
 }
+
+export interface DashboardSummary {
+  tests24h: number
+  successRate24h: number
+  avgResponseTime24h: number | null
+  totalTests: number
+}
+
+export async function fetchSummary(): Promise<DashboardSummary> {
+  const res = await authFetch('/api/tests/summary')
+  if (!res.ok) throw new Error('Failed to fetch summary')
+  return res.json()
+}
+
+export async function fetchAllLabels(): Promise<string[]> {
+  const res = await authFetch('/api/tests/labels')
+  if (!res.ok) throw new Error('Failed to fetch labels')
+  return res.json()
+}
+
+export async function exportCsv(): Promise<void> {
+  const res = await authFetch('/api/tests/export/csv')
+  if (!res.ok) throw new Error('Failed to export CSV')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'test-results.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export async function exportJson(): Promise<void> {
+  const res = await authFetch('/api/tests/export/json')
+  if (!res.ok) throw new Error('Failed to export JSON')
+  const data = await res.json()
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'test-results.json'
+  a.click()
+  URL.revokeObjectURL(url)
+}

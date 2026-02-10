@@ -26,4 +26,14 @@ public interface TestRunRepository extends JpaRepository<TestRun, Long> {
     List<String> findDistinctSimulationClassCompleted();
 
     List<TestRun> findBySimulationClassAndStatusOrderByStartTimeDesc(String simulationClass, TestStatus status, Pageable pageable);
+
+    @Query("SELECT t.labels FROM TestRun t WHERE t.labels IS NOT NULL AND t.labels <> ''")
+    List<String> findAllLabelsRaw();
+
+    long countByStatusAndStartTimeAfter(TestStatus status, java.time.LocalDateTime after);
+
+    @Query("SELECT AVG(t.meanResponseTime) FROM TestRun t WHERE t.status = 'COMPLETED' AND t.startTime > :after AND t.meanResponseTime IS NOT NULL")
+    Double avgMeanResponseTimeAfter(@org.springframework.data.repository.query.Param("after") java.time.LocalDateTime after);
+
+    List<TestRun> findByStatusIn(List<TestStatus> statuses);
 }

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchTestRuns, updateTestVersion, updateTestLabels, deleteTestRun, cancelQueuedTest, type TestRun, type Page } from '../api/testRunApi'
+import { fetchTestRuns, updateTestVersion, updateTestLabels, deleteTestRun, cancelQueuedTest, fetchAllLabels, exportCsv, exportJson, type TestRun, type Page } from '../api/testRunApi'
 
 type SortField = 'startTime' | 'simulationClass' | 'status' | 'totalRequests' | 'meanResponseTime'
 type SortDir = 'asc' | 'desc'
+type StatusFilter = '' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'RUNNING' | 'QUEUED'
 
 const LABEL_COLORS = ['#3498db', '#9b59b6', '#e67e22', '#1abc9c', '#f39c12', '#e74c3c', '#2ecc71', '#34495e']
 
@@ -28,9 +29,17 @@ export default function HistoryPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [editingVersion, setEditingVersion] = useState<{ id: number; value: string } | null>(null)
   const [filterLabel, setFilterLabel] = useState('')
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>('')
   const [addingLabel, setAddingLabel] = useState<{ id: number; value: string } | null>(null)
   const [compareSelection, setCompareSelection] = useState<number[]>([])
+  const [allLabels, setAllLabels] = useState<string[]>([])
+  const [showLabelSuggestions, setShowLabelSuggestions] = useState(false)
+  const [showAddLabelSuggestions, setShowAddLabelSuggestions] = useState(false)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    fetchAllLabels().then(setAllLabels).catch(() => {})
+  }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -38,6 +47,12 @@ export default function HistoryPage() {
       .then(setPage)
       .finally(() => setLoading(false))
   }, [pageNum, sortBy, sortDir, filterLabel])
+
+  // Client-side status filter
+  const filteredContent = page?.content.filter(run => {
+    if (filterStatus && run.status !== filterStatus) return false
+    return true
+  }) ?? []
 
   async function handleVersionSave(id: number) {
     if (!editingVersion) return
@@ -70,6 +85,11 @@ export default function HistoryPage() {
       content: prev.content.map((r) => r.id === id ? { ...r, labels: newLabels } : r)
     } : null)
     setAddingLabel(null)
+    setShowAddLabelSuggestions(false)
+    // Refresh labels list
+    if (!allLabels.includes(addingLabel.value.trim())) {
+      setAllLabels(prev => [...prev, addingLabel.value.trim()].sort())
+    }
   }
 
   async function handleRemoveLabel(id: number, label: string) {
@@ -112,6 +132,17 @@ export default function HistoryPage() {
     return `${hr}h ${min % 60}m`
   }
 
+  const labelFilterSuggestions = allLabels.filter(l =>
+    l.toLowerCase().includes(filterLabel.toLowerCase()) && l !== filterLabel
+  )
+
+  const addLabelSuggestions = addingLabel
+    ? allLabels.filter(l =>
+        l.toLowerCase().includes(addingLabel.value.toLowerCase()) &&
+        !(page?.content.find(r => r.id === addingLabel.id)?.labels || []).includes(l)
+      )
+    : []
+
   const SortHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <th onClick={() => handleSort(field)} style={{ cursor: 'pointer', userSelect: 'none' }}>
       {children} {sortBy === field && (sortDir === 'asc' ? '▲' : '▼')}
@@ -135,22 +166,58 @@ export default function HistoryPage() {
           <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
             onClick={() => setCompareSelection([])}>Clear</button>
         )}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+          <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
+            onClick={() => exportCsv()}>Export CSV</button>
+          <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
+            onClick={() => exportJson()}>Export JSON</button>
+        </div>
       </div>
 
       <div className="card" style={{ padding: '0.6rem 1.2rem', marginBottom: '0.5rem' }}>
-        <div className="flex-row">
-          <span style={{ color: '#a0a0b8', fontSize: '0.85rem' }}>Filter by label:</span>
-          <input
-            type="text"
-            placeholder="Enter label..."
-            value={filterLabel}
-            onChange={(e) => { setFilterLabel(e.target.value); setPageNum(0) }}
-            style={{ width: '200px' }}
-          />
-          {filterLabel && (
-            <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem' }}
-              onClick={() => setFilterLabel('')}>Clear</button>
-          )}
+        <div className="flex-row" style={{ flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ position: 'relative' }}>
+            <span style={{ color: '#a0a0b8', fontSize: '0.85rem', marginRight: '0.5rem' }}>Label:</span>
+            <input
+              type="text"
+              placeholder="Filter by label..."
+              value={filterLabel}
+              onChange={(e) => { setFilterLabel(e.target.value); setPageNum(0); setShowLabelSuggestions(true) }}
+              onFocus={() => setShowLabelSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowLabelSuggestions(false), 200)}
+              style={{ width: '180px' }}
+            />
+            {showLabelSuggestions && labelFilterSuggestions.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, zIndex: 10,
+                background: '#16213e', border: '1px solid #0f3460', borderRadius: '4px',
+                maxHeight: '150px', overflowY: 'auto', width: '200px', marginTop: '2px'
+              }}>
+                {labelFilterSuggestions.map(l => (
+                  <div key={l}
+                    style={{ padding: '0.3rem 0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: '#e0e0e0' }}
+                    onMouseDown={() => { setFilterLabel(l); setPageNum(0); setShowLabelSuggestions(false) }}
+                  >{l}</div>
+                ))}
+              </div>
+            )}
+            {filterLabel && (
+              <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem', marginLeft: '0.3rem' }}
+                onClick={() => setFilterLabel('')}>Clear</button>
+            )}
+          </div>
+          <div>
+            <span style={{ color: '#a0a0b8', fontSize: '0.85rem', marginRight: '0.5rem' }}>Status:</span>
+            <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value as StatusFilter) }}
+              style={{ fontSize: '0.85rem' }}>
+              <option value="">All</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="FAILED">Failed</option>
+              <option value="RUNNING">Running</option>
+              <option value="QUEUED">Queued</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -177,7 +244,7 @@ export default function HistoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {page?.content.map((run) => (
+                {filteredContent.map((run) => (
                   <tr key={run.id}>
                     <td>
                       <input
@@ -220,18 +287,39 @@ export default function HistoryPage() {
                           </span>
                         ))}
                         {addingLabel?.id === run.id ? (
-                          <div className="flex-row" style={{ gap: '0.2rem' }}>
-                            <input type="text" value={addingLabel.value}
-                              onChange={(e) => setAddingLabel({ ...addingLabel, value: e.target.value })}
-                              onKeyDown={(e) => e.key === 'Enter' && handleAddLabel(run.id)}
-                              style={{ width: '80px', fontSize: '0.75rem', padding: '0.15rem 0.3rem' }}
-                              autoFocus />
-                            <button className="btn btn-primary"
-                              style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem' }}
-                              onClick={() => handleAddLabel(run.id)}>+</button>
-                            <button className="btn btn-secondary"
-                              style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem' }}
-                              onClick={() => setAddingLabel(null)}>&times;</button>
+                          <div style={{ position: 'relative' }}>
+                            <div className="flex-row" style={{ gap: '0.2rem' }}>
+                              <input type="text" value={addingLabel.value}
+                                onChange={(e) => { setAddingLabel({ ...addingLabel, value: e.target.value }); setShowAddLabelSuggestions(true) }}
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddLabel(run.id)}
+                                onFocus={() => setShowAddLabelSuggestions(true)}
+                                onBlur={() => setTimeout(() => setShowAddLabelSuggestions(false), 200)}
+                                style={{ width: '80px', fontSize: '0.75rem', padding: '0.15rem 0.3rem' }}
+                                autoFocus />
+                              <button className="btn btn-primary"
+                                style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem' }}
+                                onClick={() => handleAddLabel(run.id)}>+</button>
+                              <button className="btn btn-secondary"
+                                style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem' }}
+                                onClick={() => { setAddingLabel(null); setShowAddLabelSuggestions(false) }}>&times;</button>
+                            </div>
+                            {showAddLabelSuggestions && addLabelSuggestions.length > 0 && (
+                              <div style={{
+                                position: 'absolute', top: '100%', left: 0, zIndex: 10,
+                                background: '#16213e', border: '1px solid #0f3460', borderRadius: '4px',
+                                maxHeight: '120px', overflowY: 'auto', width: '140px', marginTop: '2px'
+                              }}>
+                                {addLabelSuggestions.slice(0, 8).map(l => (
+                                  <div key={l}
+                                    style={{ padding: '0.2rem 0.4rem', cursor: 'pointer', fontSize: '0.75rem', color: '#e0e0e0' }}
+                                    onMouseDown={() => {
+                                      setAddingLabel({ ...addingLabel!, value: l })
+                                      setShowAddLabelSuggestions(false)
+                                    }}
+                                  >{l}</div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <span
@@ -282,8 +370,8 @@ export default function HistoryPage() {
                     </td>
                   </tr>
                 ))}
-                {page?.content.length === 0 && (
-                  <tr><td colSpan={12} style={{ textAlign: 'center', color: '#a0a0b8' }}>No test runs yet</td></tr>
+                {filteredContent.length === 0 && (
+                  <tr><td colSpan={12} style={{ textAlign: 'center', color: '#a0a0b8' }}>No test runs found</td></tr>
                 )}
               </tbody>
             </table>

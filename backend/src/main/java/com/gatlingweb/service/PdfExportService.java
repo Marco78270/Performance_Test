@@ -33,9 +33,31 @@ public class PdfExportService {
 
         StringBuilder html = new StringBuilder();
         html.append(htmlHead("Test Report - #" + id));
-        html.append("<h1>Test Report</h1>");
+        html.append("<h1>Test Report #").append(id).append("</h1>");
 
-        // Summary table
+        // Executive summary box
+        long totalReq = run.totalRequests() != null ? run.totalRequests() : 0;
+        long totalErr = run.totalErrors() != null ? run.totalErrors() : 0;
+        double errorRate = totalReq > 0 ? (double) totalErr / totalReq * 100 : 0;
+        String verdictColor = "PASSED".equals(run.thresholdVerdict()) ? "#27ae60" : "FAILED".equals(run.thresholdVerdict()) ? "#e94560" : "#666";
+        html.append("<div style=\"background:#f5f5f5;padding:10px;border-radius:5px;border-left:4px solid ").append(verdictColor).append(";margin-bottom:12px;\">");
+        html.append("<div style=\"font-size:12px;font-weight:bold;margin-bottom:6px;\">").append(esc(run.simulationClass())).append("</div>");
+        html.append("<div style=\"display:inline-block;width:120px;\"><span style=\"color:#888;\">Status:</span> <b>").append(run.status().name()).append("</b></div>");
+        if (run.thresholdVerdict() != null) {
+            html.append("<div style=\"display:inline-block;width:120px;\"><span style=\"color:#888;\">Verdict:</span> <b style=\"color:").append(verdictColor).append(";\">").append(run.thresholdVerdict()).append("</b></div>");
+        }
+        html.append("<div style=\"display:inline-block;width:150px;\"><span style=\"color:#888;\">Requests:</span> <b>").append(totalReq).append("</b></div>");
+        html.append("<div style=\"display:inline-block;width:150px;\"><span style=\"color:#888;\">Error Rate:</span> <b>").append(String.format("%.2f%%", errorRate)).append("</b></div>");
+        if (run.meanResponseTime() != null) {
+            html.append("<div style=\"display:inline-block;width:150px;\"><span style=\"color:#888;\">Mean RT:</span> <b>").append(String.format("%.0f ms", run.meanResponseTime())).append("</b></div>");
+        }
+        if (run.p95ResponseTime() != null) {
+            html.append("<div style=\"display:inline-block;width:150px;\"><span style=\"color:#888;\">p95:</span> <b>").append(String.format("%.0f ms", run.p95ResponseTime())).append("</b></div>");
+        }
+        html.append("</div>");
+
+        // Test details table
+        html.append("<h2>Test Details</h2>");
         html.append("<table>");
         html.append(row("Test ID", "#" + run.id()));
         html.append(row("Simulation", run.simulationClass()));
@@ -43,26 +65,32 @@ public class PdfExportService {
         html.append(row("Status", run.status().name()));
         html.append(row("Start Time", run.startTime() != null ? run.startTime().toString() : "-"));
         html.append(row("End Time", run.endTime() != null ? run.endTime().toString() : "-"));
+        if (run.startTime() != null && run.endTime() != null) {
+            long durationMs = java.time.Duration.between(run.startTime(), run.endTime()).toMillis();
+            long sec = durationMs / 1000;
+            String dur = sec >= 60 ? String.format("%dm %ds", sec / 60, sec % 60) : sec + "s";
+            html.append(row("Duration", dur));
+        }
         if (run.thresholdVerdict() != null) {
             html.append(row("Verdict", run.thresholdVerdict()));
         }
+        if (run.bandwidthLimitMbps() != null) {
+            html.append(row("Bandwidth Limit", run.bandwidthLimitMbps() + " Mbps"));
+        }
         html.append("</table>");
 
-        // Final metrics
-        html.append("<h2>Final Metrics</h2>");
+        // Performance metrics
+        html.append("<h2>Performance Metrics</h2>");
         html.append("<table>");
         html.append("<tr><th>Metric</th><th>Value</th></tr>");
         html.append(metricRow("Total Requests", run.totalRequests()));
         html.append(metricRow("Total Errors", run.totalErrors()));
+        html.append(metricRow("Error Rate (%)", String.format("%.2f", errorRate)));
         html.append(metricRow("Mean RT (ms)", run.meanResponseTime()));
         html.append(metricRow("p50 (ms)", run.p50ResponseTime()));
         html.append(metricRow("p75 (ms)", run.p75ResponseTime()));
         html.append(metricRow("p95 (ms)", run.p95ResponseTime()));
         html.append(metricRow("p99 (ms)", run.p99ResponseTime()));
-        if (run.totalRequests() != null && run.totalRequests() > 0) {
-            double errorRate = (run.totalErrors() != null ? run.totalErrors() : 0) * 100.0 / run.totalRequests();
-            html.append(metricRow("Error Rate (%)", String.format("%.2f", errorRate)));
-        }
         html.append("</table>");
 
         // Threshold evaluation

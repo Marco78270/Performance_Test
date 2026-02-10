@@ -154,6 +154,30 @@ public class TestRunController {
                 .body(pdf);
     }
 
+    @GetMapping("/summary")
+    public Map<String, Object> summary() {
+        return testRunService.getSummary();
+    }
+
+    @GetMapping("/labels")
+    public List<String> getAllLabels() {
+        return testRunService.getAllLabels();
+    }
+
+    @GetMapping("/export/json")
+    public List<TestRunDto> exportJson() {
+        return testRunService.findAll(PageRequest.of(0, Integer.MAX_VALUE, Sort.by("startTime").descending())).getContent();
+    }
+
+    @GetMapping("/export/csv")
+    public ResponseEntity<byte[]> exportCsv() {
+        String csv = testRunService.exportCsv();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=test-results.csv")
+                .header(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8")
+                .body(csv.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
     @GetMapping("/compare")
     public ComparisonDto compare(@RequestParam String ids) {
         String[] parts = ids.split(",");

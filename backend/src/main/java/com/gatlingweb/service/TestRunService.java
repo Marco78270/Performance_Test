@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class TestRunService {
@@ -244,6 +245,70 @@ public class TestRunService {
         diff.put("errorRate", calcDiff(errorRate(runA), errorRate(runB)));
 
         return new ComparisonDto(TestRunDto.from(runA), TestRunDto.from(runB), diff);
+    }
+
+    public Map<String, Object> getSummary() {
+        LocalDateTime last24h = LocalDateTime.now().minusHours(24);
+        long completed24h = repository.countByStatusAndStartTimeAfter(TestStatus.COMPLETED, last24h);
+        long failed24h = repository.countByStatusAndStartTimeAfter(TestStatus.FAILED, last24h);
+        long total24h = completed24h + failed24h;
+        double successRate = total24h > 0 ? (double) completed24h / total24h * 100 : 0;
+        Double avgRt = repository.avgMeanResponseTimeAfter(last24h);
+        long totalAll = repository.count();
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("tests24h", total24h);
+        summary.put("successRate24h", Math.round(successRate * 10) / 10.0);
+        summary.put("avgResponseTime24h", avgRt != null ? Math.round(avgRt * 10) / 10.0 : null);
+        summary.put("totalTests", totalAll);
+        return summary;
+    }
+
+    public List<String> getAllLabels() {
+        List<String> raw = repository.findAllLabelsRaw();
+        return raw.stream()
+            .flatMap(s -> Arrays.stream(s.split(",")))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .distinct()
+            .sorted()
+            .toList();
+    }
+
+    public String exportCsv() {
+        List<TestRun> all = repository.findAllByOrderByStartTimeDesc();
+        StringBuilder sb = new StringBuilder();
+        sb.append("id,simulationClass,version,status,startTime,endTime,totalRequests,totalErrors,meanResponseTime,p50,p75,p95,p99,errorRate,labels,verdict\n");
+        for (TestRun r : all) {
+            long totalReq = r.getTotalRequests() != null ? r.getTotalRequests() : 0;
+            long totalErr = r.getTotalErrors() != null ? r.getTotalErrors() : 0;
+            double errRate = totalReq > 0 ? (double) totalErr / totalReq * 100 : 0;
+            sb.append(r.getId()).append(',');
+            sb.append(csvEscape(r.getSimulationClass())).append(',');
+            sb.append(csvEscape(r.getVersion())).append(',');
+            sb.append(r.getStatus()).append(',');
+            sb.append(r.getStartTime() != null ? r.getStartTime() : "").append(',');
+            sb.append(r.getEndTime() != null ? r.getEndTime() : "").append(',');
+            sb.append(totalReq).append(',');
+            sb.append(totalErr).append(',');
+            sb.append(r.getMeanResponseTime() != null ? String.format("%.1f", r.getMeanResponseTime()) : "").append(',');
+            sb.append(r.getP50ResponseTime() != null ? String.format("%.1f", r.getP50ResponseTime()) : "").append(',');
+            sb.append(r.getP75ResponseTime() != null ? String.format("%.1f", r.getP75ResponseTime()) : "").append(',');
+            sb.append(r.getP95ResponseTime() != null ? String.format("%.1f", r.getP95ResponseTime()) : "").append(',');
+            sb.append(r.getP99ResponseTime() != null ? String.format("%.1f", r.getP99ResponseTime()) : "").append(',');
+            sb.append(String.format("%.2f", errRate)).append(',');
+            sb.append(csvEscape(r.getLabels())).append(',');
+            sb.append(r.getThresholdVerdict() != null ? r.getThresholdVerdict().name() : "").append('\n');
+        }
+        return sb.toString();
+    }
+
+    private String csvEscape(String val) {
+        if (val == null) return "";
+        if (val.contains(",") || val.contains("\"") || val.contains("\n")) {
+            return "\"" + val.replace("\"", "\"\"") + "\"";
+        }
+        return val;
     }
 
     Double calcDiff(Double a, Double b) {

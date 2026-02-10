@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { fetchSimulationClasses } from '../api/simulationApi'
-import { launchTest, fetchRunningTest, fetchQueue, cancelQueuedTest, type TestRun } from '../api/testRunApi'
+import { launchTest, fetchRunningTest, fetchQueue, cancelQueuedTest, fetchSummary, type TestRun, type DashboardSummary } from '../api/testRunApi'
 import { useQueueWebSocket } from '../hooks/useWebSocket'
 
 export default function DashboardPage() {
@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [bandwidthLimitMbps, setBandwidthLimitMbps] = useState<number | undefined>(undefined)
   const [running, setRunning] = useState<TestRun | null>(null)
   const [queuedTests, setQueuedTests] = useState<TestRun[]>([])
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [launching, setLaunching] = useState(false)
@@ -32,6 +33,7 @@ export default function DashboardPage() {
       }),
       fetchRunningTest().then(setRunning),
       fetchQueue().then(setQueuedTests),
+      fetchSummary().then(setSummary).catch(() => {}),
     ]).finally(() => setLoading(false))
   }, [])
 
@@ -91,6 +93,31 @@ export default function DashboardPage() {
             onClick={() => navigate(`/test/${running.id}`)}>
             View live
           </button>
+        </div>
+      )}
+
+      {summary && (
+        <div className="flex-row-wrap" style={{ marginBottom: '1rem' }}>
+          <div className="card" style={{ flex: 1, textAlign: 'center', minWidth: '140px' }}>
+            <div style={{ color: '#a0a0b8', fontSize: '0.8rem' }}>Tests (24h)</div>
+            <div style={{ fontSize: '1.5rem', color: '#fff' }}>{summary.tests24h}</div>
+          </div>
+          <div className="card" style={{ flex: 1, textAlign: 'center', minWidth: '140px' }}>
+            <div style={{ color: '#a0a0b8', fontSize: '0.8rem' }}>Success Rate (24h)</div>
+            <div style={{ fontSize: '1.5rem', color: summary.successRate24h >= 80 ? '#27ae60' : '#e94560' }}>
+              {summary.successRate24h}%
+            </div>
+          </div>
+          <div className="card" style={{ flex: 1, textAlign: 'center', minWidth: '140px' }}>
+            <div style={{ color: '#a0a0b8', fontSize: '0.8rem' }}>Avg RT (24h)</div>
+            <div style={{ fontSize: '1.5rem', color: '#fff' }}>
+              {summary.avgResponseTime24h != null ? `${summary.avgResponseTime24h} ms` : '-'}
+            </div>
+          </div>
+          <div className="card" style={{ flex: 1, textAlign: 'center', minWidth: '140px' }}>
+            <div style={{ color: '#a0a0b8', fontSize: '0.8rem' }}>Total Tests</div>
+            <div style={{ fontSize: '1.5rem', color: '#fff' }}>{summary.totalTests}</div>
+          </div>
         </div>
       )}
 
