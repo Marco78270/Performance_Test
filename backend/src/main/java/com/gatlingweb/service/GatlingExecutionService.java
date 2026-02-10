@@ -4,6 +4,7 @@ import com.gatlingweb.dto.LaunchRequest;
 import com.gatlingweb.entity.TestRun;
 import com.gatlingweb.entity.TestStatus;
 import com.gatlingweb.repository.TestRunRepository;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +61,34 @@ public class GatlingExecutionService {
         this.bandwidthLimiter = bandwidthLimiter;
         this.workspacePath = Path.of(workspace).toAbsolutePath().normalize();
         this.timeoutMinutes = timeoutMinutes;
+    }
+
+    @PostConstruct
+    void validateEnvironment() {
+        if (!Files.isDirectory(workspacePath)) {
+            throw new IllegalStateException("Gatling workspace not found: " + workspacePath
+                    + " — set gatling.workspace or GATLING_WORKSPACE env variable");
+        }
+        Path pom = workspacePath.resolve("pom.xml");
+        if (!Files.exists(pom)) {
+            throw new IllegalStateException("No pom.xml in workspace: " + workspacePath
+                    + " — the workspace must be a valid Maven/Gatling project");
+        }
+        // Check mvn is available
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        String mvnCmd = isWindows ? "mvn.cmd" : "mvn";
+        try {
+            Process p = new ProcessBuilder(mvnCmd, "--version").redirectErrorStream(true).start();
+            boolean finished = p.waitFor(5, TimeUnit.SECONDS);
+            if (!finished || p.exitValue() != 0) {
+                throw new IllegalStateException("Maven (mvn) returned an error — ensure Maven is installed and in PATH");
+            }
+            log.info("Gatling environment OK: workspace={}, Maven found", workspacePath);
+        } catch (IOException e) {
+            throw new IllegalStateException("Maven (mvn) not found in PATH — install Maven or add it to PATH", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public void setOnTestComplete(Runnable callback) {
