@@ -1,0 +1,32 @@
+[
+  {
+    "id": "http-get",
+    "name": "HTTP GET Requests",
+    "description": "Basic HTTP GET load test with configurable parameters",
+    "fileName": "HttpGetSimulation.scala"
+  },
+  {
+    "id": "http-post-json",
+    "name": "HTTP POST JSON",
+    "description": "POST JSON payloads with response validation",
+    "fileName": "HttpPostJsonSimulation.scala"
+  },
+  {
+    "id": "csv-feeder",
+    "name": "CSV Feeder",
+    "description": "Data-driven test using CSV file as feeder",
+    "fileName": "CsvFeederSimulation.scala"
+  },
+  {
+    "id": "assertions",
+    "name": "With Assertions",
+    "description": "Test with built-in Gatling assertions for CI/CD",
+    "fileName": "AssertionSimulation.scala"
+  },
+  {
+    "id": "rest-api-crud",
+    "name": "REST API CRUD",
+    "description": "Complete CRUD cycle: Create, Read, Update, Delete",
+    "fileName": "RestApiCrudSimulation.scala"
+  }
+]
