@@ -1,3 +1,5 @@
+import { authFetch } from './authFetch'
+
 export interface SimulationFile {
   path: string
   name: string
@@ -6,20 +8,20 @@ export interface SimulationFile {
 }
 
 export async function fetchFileTree(): Promise<SimulationFile[]> {
-  const res = await fetch('/api/simulations/files')
+  const res = await authFetch('/api/simulations/files')
   if (!res.ok) throw new Error('Failed to fetch file tree')
   return res.json()
 }
 
 export async function fetchFileContent(path: string): Promise<string> {
-  const res = await fetch(`/api/simulations/files?path=${encodeURIComponent(path)}`)
+  const res = await authFetch(`/api/simulations/files?path=${encodeURIComponent(path)}`)
   if (!res.ok) throw new Error('Failed to fetch file')
   const data = await res.json()
   return data.content
 }
 
 export async function saveFile(path: string, content: string): Promise<void> {
-  const res = await fetch(`/api/simulations/files?path=${encodeURIComponent(path)}`, {
+  const res = await authFetch(`/api/simulations/files?path=${encodeURIComponent(path)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
@@ -28,7 +30,7 @@ export async function saveFile(path: string, content: string): Promise<void> {
 }
 
 export async function createFile(path: string, content = ''): Promise<void> {
-  const res = await fetch('/api/simulations/files', {
+  const res = await authFetch('/api/simulations/files', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path, content }),
@@ -37,20 +39,20 @@ export async function createFile(path: string, content = ''): Promise<void> {
 }
 
 export async function deleteFile(path: string): Promise<void> {
-  const res = await fetch(`/api/simulations/files?path=${encodeURIComponent(path)}`, {
+  const res = await authFetch(`/api/simulations/files?path=${encodeURIComponent(path)}`, {
     method: 'DELETE',
   })
   if (!res.ok) throw new Error('Failed to delete file')
 }
 
 export async function fetchSimulationClasses(): Promise<string[]> {
-  const res = await fetch('/api/simulations/classes')
+  const res = await authFetch('/api/simulations/classes')
   if (!res.ok) throw new Error('Failed to fetch classes')
   return res.json()
 }
 
 export async function renameFile(oldPath: string, newPath: string): Promise<void> {
-  const res = await fetch('/api/simulations/files/rename', {
+  const res = await authFetch('/api/simulations/files/rename', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ oldPath, newPath }),
@@ -59,7 +61,7 @@ export async function renameFile(oldPath: string, newPath: string): Promise<void
 }
 
 export async function createDirectory(path: string): Promise<void> {
-  const res = await fetch('/api/simulations/directories', {
+  const res = await authFetch('/api/simulations/directories', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path }),

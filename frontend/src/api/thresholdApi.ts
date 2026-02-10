@@ -1,3 +1,5 @@
+import { authFetch } from './authFetch'
+
 export interface ThresholdRule {
   metric: string
   operator: 'LT' | 'GT' | 'LTE' | 'GTE'
@@ -29,19 +31,19 @@ export interface CreateThresholdProfileRequest {
 }
 
 export async function fetchThresholdProfiles(): Promise<ThresholdProfile[]> {
-  const res = await fetch('/api/thresholds')
+  const res = await authFetch('/api/thresholds')
   if (!res.ok) throw new Error('Failed to fetch threshold profiles')
   return res.json()
 }
 
 export async function fetchThresholdProfile(id: number): Promise<ThresholdProfile> {
-  const res = await fetch(`/api/thresholds/${id}`)
+  const res = await authFetch(`/api/thresholds/${id}`)
   if (!res.ok) throw new Error('Failed to fetch threshold profile')
   return res.json()
 }
 
 export async function createThresholdProfile(request: CreateThresholdProfileRequest): Promise<ThresholdProfile> {
-  const res = await fetch('/api/thresholds', {
+  const res = await authFetch('/api/thresholds', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -54,7 +56,7 @@ export async function createThresholdProfile(request: CreateThresholdProfileRequ
 }
 
 export async function updateThresholdProfile(id: number, request: CreateThresholdProfileRequest): Promise<ThresholdProfile> {
-  const res = await fetch(`/api/thresholds/${id}`, {
+  const res = await authFetch(`/api/thresholds/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -67,6 +69,6 @@ export async function updateThresholdProfile(id: number, request: CreateThreshol
 }
 
 export async function deleteThresholdProfile(id: number): Promise<void> {
-  const res = await fetch(`/api/thresholds/${id}`, { method: 'DELETE' })
+  const res = await authFetch(`/api/thresholds/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error('Failed to delete profile')
 }

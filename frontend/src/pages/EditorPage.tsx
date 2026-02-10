@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import Editor from '@monaco-editor/react'
+import Editor, { loader } from '@monaco-editor/react'
+import * as monaco from 'monaco-editor'
+
+loader.config({ monaco })
 import {
   fetchFileTree, fetchFileContent, saveFile, createFile, deleteFile, renameFile, createDirectory,
   type SimulationFile,

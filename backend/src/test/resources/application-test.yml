@@ -12,3 +12,9 @@ spring:
 gatling:
   workspace: ${java.io.tmpdir}/gatling-test-workspace
   timeout-minutes: 1
+
+app:
+  security:
+    username: test
+    password: test
+    allowed-origins: http://localhost

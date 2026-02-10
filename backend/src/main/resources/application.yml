@@ -20,3 +20,9 @@ server:
 gatling:
   workspace: ${GATLING_WORKSPACE:../workspace}
   timeout-minutes: ${GATLING_TIMEOUT:30}
+
+app:
+  security:
+    username: ${APP_USERNAME:admin}
+    password: ${APP_PASSWORD:admin}
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8080}

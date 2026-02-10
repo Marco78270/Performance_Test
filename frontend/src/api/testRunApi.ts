@@ -1,3 +1,5 @@
+import { authFetch } from './authFetch'
+
 export interface ThresholdEvaluationResult {
   metric: string
   operator: string
@@ -50,7 +52,7 @@ export interface LaunchParams {
 }
 
 export async function launchTest(params: LaunchParams): Promise<TestRun> {
-  const res = await fetch('/api/tests/launch', {
+  const res = await authFetch('/api/tests/launch', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -63,7 +65,7 @@ export async function launchTest(params: LaunchParams): Promise<TestRun> {
 }
 
 export async function cancelTest(id: number): Promise<void> {
-  const res = await fetch(`/api/tests/${id}/cancel`, { method: 'POST' })
+  const res = await authFetch(`/api/tests/${id}/cancel`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to cancel test')
 }
 
@@ -79,19 +81,19 @@ export async function fetchTestRuns(params: FetchTestRunsParams = {}): Promise<P
   const { page = 0, size = 20, sortBy = 'startTime', sortDir = 'desc', label } = params
   const query = new URLSearchParams({ page: String(page), size: String(size), sortBy, sortDir })
   if (label) query.set('label', label)
-  const res = await fetch(`/api/tests?${query}`)
+  const res = await authFetch(`/api/tests?${query}`)
   if (!res.ok) throw new Error('Failed to fetch test runs')
   return res.json()
 }
 
 export async function fetchTestRun(id: number): Promise<TestRun> {
-  const res = await fetch(`/api/tests/${id}`)
+  const res = await authFetch(`/api/tests/${id}`)
   if (!res.ok) throw new Error('Failed to fetch test run')
   return res.json()
 }
 
 export async function updateTestVersion(id: number, version: string): Promise<void> {
-  const res = await fetch(`/api/tests/${id}/version`, {
+  const res = await authFetch(`/api/tests/${id}/version`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ version }),
@@ -100,19 +102,19 @@ export async function updateTestVersion(id: number, version: string): Promise<vo
 }
 
 export async function deleteTestRun(id: number): Promise<void> {
-  const res = await fetch(`/api/tests/${id}`, { method: 'DELETE' })
+  const res = await authFetch(`/api/tests/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error('Failed to delete test run')
 }
 
 export async function fetchRunningTest(): Promise<TestRun | null> {
-  const res = await fetch('/api/tests/running')
+  const res = await authFetch('/api/tests/running')
   if (res.status === 404) return null
   if (!res.ok) throw new Error('Failed to fetch running test')
   return res.json()
 }
 
 export async function updateTestLabels(id: number, labels: string[]): Promise<void> {
-  const res = await fetch(`/api/tests/${id}/labels`, {
+  const res = await authFetch(`/api/tests/${id}/labels`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ labels }),
@@ -135,7 +137,7 @@ export interface MetricsSnapshot {
 }
 
 export async function fetchTestMetrics(id: number): Promise<MetricsSnapshot[]> {
-  const res = await fetch(`/api/tests/${id}/metrics`)
+  const res = await authFetch(`/api/tests/${id}/metrics`)
   if (!res.ok) throw new Error('Failed to fetch metrics')
   return res.json()
 }
@@ -158,19 +160,19 @@ export interface InfraMetricsSnapshot {
 }
 
 export async function fetchInfraMetrics(id: number): Promise<InfraMetricsSnapshot[]> {
-  const res = await fetch(`/api/tests/${id}/infra-metrics`)
+  const res = await authFetch(`/api/tests/${id}/infra-metrics`)
   if (!res.ok) throw new Error('Failed to fetch infra metrics')
   return res.json()
 }
 
 export async function fetchQueue(): Promise<TestRun[]> {
-  const res = await fetch('/api/tests/queue')
+  const res = await authFetch('/api/tests/queue')
   if (!res.ok) throw new Error('Failed to fetch queue')
   return res.json()
 }
 
 export async function cancelQueuedTest(id: number): Promise<void> {
-  const res = await fetch(`/api/tests/${id}/cancel-queued`, { method: 'POST' })
+  const res = await authFetch(`/api/tests/${id}/cancel-queued`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to cancel queued test')
 }
 
@@ -193,13 +195,13 @@ export interface TrendData {
 }
 
 export async function fetchTrends(simulationClass: string, limit = 20): Promise<TrendData> {
-  const res = await fetch(`/api/tests/trends?simulationClass=${encodeURIComponent(simulationClass)}&limit=${limit}`)
+  const res = await authFetch(`/api/tests/trends?simulationClass=${encodeURIComponent(simulationClass)}&limit=${limit}`)
   if (!res.ok) throw new Error('Failed to fetch trends')
   return res.json()
 }
 
 export async function fetchCompletedSimulationClasses(): Promise<string[]> {
-  const res = await fetch('/api/tests/simulation-classes')
+  const res = await authFetch('/api/tests/simulation-classes')
   if (!res.ok) throw new Error('Failed to fetch simulation classes')
   return res.json()
 }
