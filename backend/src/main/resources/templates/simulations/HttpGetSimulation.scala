@@ -44,5 +44,8 @@ class __CLASS_NAME__ extends Simulation {
     scn.inject(atOnceUsers(users))
   }
 
-  setUp(injection).protocols(httpProtocol)
+  {
+    val setup = setUp(injection).protocols(httpProtocol)
+    if (testDuration > 0) setup.maxDuration(testDuration.seconds)
+  }
 }

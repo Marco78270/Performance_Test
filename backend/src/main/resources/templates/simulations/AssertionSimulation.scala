@@ -42,12 +42,15 @@ class __CLASS_NAME__ extends Simulation {
     scn.inject(atOnceUsers(users))
   }
 
-  setUp(injection)
-    .protocols(httpProtocol)
-    .assertions(
-      global.responseTime.percentile(95).lt(500),
-      global.responseTime.percentile(99).lt(1000),
-      global.successfulRequests.percent.gt(99.0),
-      forAll.responseTime.max.lt(5000)
-    )
+  {
+    val setup = setUp(injection)
+      .protocols(httpProtocol)
+      .assertions(
+        global.responseTime.percentile(95).lt(500),
+        global.responseTime.percentile(99).lt(1000),
+        global.successfulRequests.percent.gt(99.0),
+        forAll.responseTime.max.lt(5000)
+      )
+    if (testDuration > 0) setup.maxDuration(testDuration.seconds)
+  }
 }

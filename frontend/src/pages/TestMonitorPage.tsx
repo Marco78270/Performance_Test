@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area,
 } from 'recharts'
 import { fetchTestRun, cancelTest, cancelQueuedTest, updateTestLabels, fetchTestMetrics, fetchInfraMetrics, type TestRun } from '../api/testRunApi'
 import { useMetricsWebSocket, useTestStatusWebSocket, useLogsWebSocket } from '../hooks/useWebSocket'
@@ -38,6 +37,32 @@ function smoothData(data: MetricsSnapshot[], windowSize = 3): MetricsSnapshot[] 
       p99: avgP99,
     }
   })
+}
+
+interface ChartDataPoint {
+  time: number
+  requestsPerSecond: number
+  errorsPerSecond: number
+  meanResponseTime: number
+  activeUsers: number
+}
+
+function downsampleForChart(data: ChartDataPoint[], maxPoints = 300): ChartDataPoint[] {
+  if (data.length <= maxPoints) return data
+  const bucketSize = Math.ceil(data.length / maxPoints)
+  const result: ChartDataPoint[] = []
+  for (let i = 0; i < data.length; i += bucketSize) {
+    const bucket = data.slice(i, Math.min(i + bucketSize, data.length))
+    const len = bucket.length
+    result.push({
+      time: bucket[Math.floor(len / 2)].time,
+      requestsPerSecond: bucket.reduce((s, p) => s + p.requestsPerSecond, 0) / len,
+      errorsPerSecond: bucket.reduce((s, p) => s + p.errorsPerSecond, 0) / len,
+      meanResponseTime: bucket.reduce((s, p) => s + p.meanResponseTime, 0) / len,
+      activeUsers: bucket.reduce((s, p) => s + p.activeUsers, 0) / len,
+    })
+  }
+  return result
 }
 
 function formatTime(sec: unknown): string {
@@ -93,6 +118,8 @@ export default function TestMonitorPage() {
 
   useEffect(() => {
     setLoading(true)
+    setHistoricalMetrics([])
+    setHistoricalInfra([])
     fetchTestRun(testId).then((run) => {
       setTestRun(run)
       if (run.status !== 'RUNNING' && run.status !== 'QUEUED') {
@@ -121,17 +148,16 @@ export default function TestMonitorPage() {
   const smoothedMetrics = useMemo(() => smoothData(metrics, 3), [metrics])
   const startTs = metrics[0]?.timestamp || Date.now()
 
-  const chartData = useMemo(() => smoothedMetrics.map((m) => ({
-    time: Math.round((m.timestamp - startTs) / 1000),
-    requestsPerSecond: m.requestsPerSecond || 0,
-    errorsPerSecond: m.errorsPerSecond || 0,
-    meanResponseTime: m.meanResponseTime || 0,
-    activeUsers: m.activeUsers || 0,
-    p50: m.p50 || 0,
-    p75: m.p75 || 0,
-    p95: m.p95 || 0,
-    p99: m.p99 || 0,
-  })), [smoothedMetrics, startTs])
+  const chartData = useMemo(() => {
+    const mapped = smoothedMetrics.map((m) => ({
+      time: Math.round((m.timestamp - startTs) / 1000),
+      requestsPerSecond: m.requestsPerSecond || 0,
+      errorsPerSecond: m.errorsPerSecond || 0,
+      meanResponseTime: m.meanResponseTime || 0,
+      activeUsers: m.activeUsers || 0,
+    }))
+    return downsampleForChart(mapped, 300)
+  }, [smoothedMetrics, startTs])
 
   if (loading) {
     return <div className="loading-spinner">Loading...</div>
@@ -326,18 +352,15 @@ export default function TestMonitorPage() {
           </div>
 
           <div className="card">
-            <h3 style={{ marginBottom: '0.5rem' }}>Response Time Percentiles</h3>
+            <h3 style={{ marginBottom: '0.5rem' }}>Mean Response Time</h3>
             <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={chartData}>
+              <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
                 <XAxis dataKey="time" stroke="#a0a0b8" tickFormatter={formatTime} />
                 <YAxis stroke="#a0a0b8" />
-                <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${(Number(value) || 0).toFixed(0)} ms`, '']} />
-                <Area type="monotone" dataKey="p99" stroke="#e94560" fill="#e9456030" name="p99" />
-                <Area type="monotone" dataKey="p95" stroke="#e67e22" fill="#e67e2230" name="p95" />
-                <Area type="monotone" dataKey="p75" stroke="#f1c40f" fill="#f1c40f30" name="p75" />
-                <Area type="monotone" dataKey="p50" stroke="#27ae60" fill="#27ae6030" name="p50" />
-              </AreaChart>
+                <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${(Number(value) || 0).toFixed(0)} ms`, 'Mean RT']} />
+                <Line type="monotone" dataKey="meanResponseTime" stroke="#e67e22" dot={false} name="Mean RT (ms)" />
+              </LineChart>
             </ResponsiveContainer>
           </div>
 

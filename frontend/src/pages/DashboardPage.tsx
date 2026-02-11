@@ -9,11 +9,16 @@ export default function DashboardPage() {
   const [classes, setClasses] = useState<string[]>([])
   const [selected, setSelected] = useState('')
   const [version, setVersion] = useState('')
-  const [users, setUsers] = useState(5)
+  const [usersInput, setUsersInput] = useState('5')
   const [rampUp, setRampUp] = useState(true)
-  const [rampUpDuration, setRampUpDuration] = useState(10)
-  const [duration, setDuration] = useState(20)
+  const [rampUpDurationInput, setRampUpDurationInput] = useState('10')
+  const [durationInput, setDurationInput] = useState('20')
   const [loop, setLoop] = useState(true)
+
+  // Derived numeric values
+  const users = parseInt(usersInput) || 1
+  const rampUpDuration = parseInt(rampUpDurationInput) || 1
+  const duration = parseInt(durationInput) || 1
   const [bandwidthLimitMbps, setBandwidthLimitMbps] = useState<number | undefined>(undefined)
   const [running, setRunning] = useState<TestRun | null>(null)
   const [queuedTests, setQueuedTests] = useState<TestRun[]>([])
@@ -59,9 +64,8 @@ export default function DashboardPage() {
       })
       if (run.status === 'QUEUED') {
         setQueuedTests(prev => [...prev, run])
-      } else {
-        navigate(`/test/${run.id}`)
       }
+      navigate(`/test/${run.id}`)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Launch failed')
     } finally {
@@ -144,8 +148,9 @@ export default function DashboardPage() {
             <input
               type="number"
               min={1}
-              value={users}
-              onChange={(e) => setUsers(parseInt(e.target.value) || 1)}
+              value={usersInput}
+              onChange={(e) => setUsersInput(e.target.value)}
+              onBlur={() => { const v = parseInt(usersInput); if (isNaN(v) || v < 1) setUsersInput('1') }}
               style={{ width: '80px' }}
             />
           </label>
@@ -162,8 +167,9 @@ export default function DashboardPage() {
             <input
               type="number"
               min={1}
-              value={rampUpDuration}
-              onChange={(e) => setRampUpDuration(parseInt(e.target.value) || 1)}
+              value={rampUpDurationInput}
+              onChange={(e) => setRampUpDurationInput(e.target.value)}
+              onBlur={() => { const v = parseInt(rampUpDurationInput); if (isNaN(v) || v < 1) setRampUpDurationInput('1') }}
               style={{ width: '80px' }}
               disabled={!rampUp}
             />
@@ -174,17 +180,17 @@ export default function DashboardPage() {
               checked={loop}
               onChange={(e) => setLoop(e.target.checked)}
             />
-            Loop until duration
+            Loop scenario
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: loop ? 1 : 0.5 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             Duration (s)
             <input
               type="number"
               min={1}
-              value={duration}
-              onChange={(e) => setDuration(parseInt(e.target.value) || 1)}
+              value={durationInput}
+              onChange={(e) => setDurationInput(e.target.value)}
+              onBlur={() => { const v = parseInt(durationInput); if (isNaN(v) || v < 1) setDurationInput('1') }}
               style={{ width: '80px' }}
-              disabled={!loop}
             />
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -254,14 +260,17 @@ function InjectionProfileChart({ users, rampUp, rampUpDuration, duration, loop }
   const data = useMemo(() => {
     const points: { time: number; usersPerSec: number }[] = []
     if (loop) {
-      // Loop mode: users injected over time, running for duration
+      // Loop mode: ramp-up is INCLUDED in total duration
       if (rampUp) {
-        const steps = Math.max(rampUpDuration, 1)
+        const effectiveRampUp = Math.min(rampUpDuration, duration)
+        const steps = Math.max(effectiveRampUp, 1)
         for (let t = 0; t <= steps; t++) {
           points.push({ time: t, usersPerSec: 1 + (users - 1) * (t / steps) })
         }
-        points.push({ time: rampUpDuration, usersPerSec: users })
-        points.push({ time: rampUpDuration + duration, usersPerSec: users })
+        if (duration > rampUpDuration) {
+          points.push({ time: rampUpDuration, usersPerSec: users })
+          points.push({ time: duration, usersPerSec: users })
+        }
       } else {
         points.push({ time: 0, usersPerSec: users })
         points.push({ time: duration, usersPerSec: users })
@@ -281,7 +290,7 @@ function InjectionProfileChart({ users, rampUp, rampUpDuration, duration, loop }
   }, [users, rampUp, rampUpDuration, duration, loop])
 
   const totalTime = loop
-    ? (rampUp ? rampUpDuration + duration : duration)
+    ? duration
     : (rampUp ? rampUpDuration + 1 : 2)
 
   return (
