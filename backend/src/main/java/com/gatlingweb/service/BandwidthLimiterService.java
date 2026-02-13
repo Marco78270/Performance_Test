@@ -21,6 +21,42 @@ public class BandwidthLimiterService {
 
     public BandwidthLimiterService() {
         this.isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+        cleanupStaleLimit();
+    }
+
+    /**
+     * On startup, remove any stale bandwidth limit left by a previous crashed session.
+     */
+    private void cleanupStaleLimit() {
+        try {
+            if (isWindows) {
+                // Check if a GatlingBandwidthLimit policy exists and remove it
+                String[] checkCmd = {"powershell", "-Command",
+                    "if (Get-NetQosPolicy -Name 'GatlingBandwidthLimit' -PolicyStore ActiveStore -ErrorAction SilentlyContinue) { " +
+                    "Remove-NetQosPolicy -Name 'GatlingBandwidthLimit' -PolicyStore ActiveStore -Confirm:$false -ErrorAction Stop; " +
+                    "'REMOVED' } else { 'NONE' }"
+                };
+                ProcessBuilder pb = new ProcessBuilder(checkCmd);
+                pb.redirectErrorStream(true);
+                Process p = pb.start();
+                String output = new String(p.getInputStream().readAllBytes()).trim();
+                p.waitFor(10, TimeUnit.SECONDS);
+                if (output.contains("REMOVED")) {
+                    log.warn("Removed stale bandwidth limit from previous session");
+                }
+            } else {
+                // On Linux, check if a tbf qdisc exists on the default interface
+                String iface = detectLinuxInterface();
+                String[] cmd = {"sudo", "tc", "qdisc", "del", "dev", iface, "root"};
+                ProcessBuilder pb = new ProcessBuilder(cmd);
+                pb.redirectErrorStream(true);
+                Process p = pb.start();
+                p.waitFor(5, TimeUnit.SECONDS);
+                // Ignore errors - there might not be a qdisc to remove
+            }
+        } catch (Exception e) {
+            log.debug("Startup bandwidth cleanup (non-critical): {}", e.getMessage());
+        }
     }
 
     public void applyLimit(int mbps) {
@@ -72,6 +108,17 @@ public class BandwidthLimiterService {
     }
 
     private void removeWindowsLimit() throws Exception {
+        // Try direct removal first (works if app runs elevated or policy was created in ActiveStore)
+        try {
+            String[] cmd = {"powershell", "-Command",
+                "Remove-NetQosPolicy -Name 'GatlingBandwidthLimit' -PolicyStore ActiveStore -Confirm:$false -ErrorAction Stop"
+            };
+            executeCommand(cmd);
+            return;
+        } catch (Exception e) {
+            log.debug("Direct removal failed, trying elevated: {}", e.getMessage());
+        }
+        // Fall back to elevated removal
         executeElevatedPowershell(
             "Remove-NetQosPolicy -Name 'GatlingBandwidthLimit' " +
             "-PolicyStore ActiveStore -Confirm:$false -ErrorAction Stop"
@@ -201,10 +248,28 @@ public class BandwidthLimiterService {
         }
     }
 
+    /**
+     * Force remove regardless of limitApplied flag (for shutdown safety).
+     */
+    public void forceRemoveLimit() {
+        try {
+            if (isWindows) {
+                removeWindowsLimit();
+            } else {
+                removeLinuxLimit();
+            }
+            log.info("Bandwidth limit force-removed");
+        } catch (Exception e) {
+            log.debug("Force remove (non-critical): {}", e.getMessage());
+        } finally {
+            limitApplied = false;
+        }
+    }
+
     @PreDestroy
     void shutdown() {
         log.info("BandwidthLimiterService shutting down...");
-        removeLimit();
+        forceRemoveLimit();
         log.info("BandwidthLimiterService shutdown complete");
     }
 

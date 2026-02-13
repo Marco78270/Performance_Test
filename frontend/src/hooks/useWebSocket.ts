@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
-import { fetchTestMetrics } from '../api/testRunApi'
 
 export interface MetricsSnapshot {
   timestamp: number
@@ -19,21 +18,6 @@ export interface MetricsSnapshot {
 
 const MAX_METRICS_POINTS = 600
 
-// Downsample keeping recent data at full resolution
-function downsampleMetrics(data: MetricsSnapshot[], maxPoints: number): MetricsSnapshot[] {
-  if (data.length <= maxPoints) return data
-  const keepRecent = Math.floor(maxPoints * 0.2)
-  const targetOlder = maxPoints - keepRecent
-  const olderData = data.slice(0, data.length - keepRecent)
-  const recentData = data.slice(data.length - keepRecent)
-  const step = olderData.length / targetOlder
-  const sampled: MetricsSnapshot[] = []
-  for (let i = 0; i < targetOlder; i++) {
-    sampled.push(olderData[Math.floor(i * step)])
-  }
-  return [...sampled, ...recentData]
-}
-
 export function useMetricsWebSocket(testRunId: number | null) {
   const [metrics, setMetrics] = useState<MetricsSnapshot[]>([])
   const [connected, setConnected] = useState(false)
@@ -44,18 +28,8 @@ export function useMetricsWebSocket(testRunId: number | null) {
   useEffect(() => {
     if (testRunId == null) return
 
-    let cancelled = false
-
     // Clear previous test data when testRunId changes
     setMetrics([])
-
-    // Load historical metrics on mount
-    fetchTestMetrics(testRunId).then((historical) => {
-      if (cancelled) return
-      if (historical.length > 0) {
-        setMetrics(downsampleMetrics(historical as MetricsSnapshot[], MAX_METRICS_POINTS))
-      }
-    }).catch(() => {})
 
     const client = new Client({
       webSocketFactory: () => new SockJS('/ws'),
@@ -70,9 +44,18 @@ export function useMetricsWebSocket(testRunId: number | null) {
               return prev
             }
             const next = [...prev, snapshot]
-            // Cap at MAX_METRICS_POINTS
             if (next.length > MAX_METRICS_POINTS) {
-              return downsampleMetrics(next, MAX_METRICS_POINTS)
+              // Downsample keeping recent data at full resolution
+              const keepRecent = Math.floor(MAX_METRICS_POINTS * 0.2)
+              const targetOlder = MAX_METRICS_POINTS - keepRecent
+              const olderData = next.slice(0, next.length - keepRecent)
+              const recentData = next.slice(next.length - keepRecent)
+              const step = olderData.length / targetOlder
+              const sampled: MetricsSnapshot[] = []
+              for (let i = 0; i < targetOlder; i++) {
+                sampled.push(olderData[Math.floor(i * step)])
+              }
+              return [...sampled, ...recentData]
             }
             return next
           })
@@ -87,7 +70,6 @@ export function useMetricsWebSocket(testRunId: number | null) {
     clientRef.current = client
 
     return () => {
-      cancelled = true
       client.deactivate()
       clientRef.current = null
     }

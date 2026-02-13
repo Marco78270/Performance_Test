@@ -31,13 +31,16 @@ public class TestRunService {
 
     private final TestRunRepository repository;
     private final GatlingExecutionService executionService;
+    private final MetricsPersistenceService metricsPersistence;
     private final ObjectMapper objectMapper;
     private final SimpMessagingTemplate messaging;
 
     public TestRunService(TestRunRepository repository, GatlingExecutionService executionService,
+                          MetricsPersistenceService metricsPersistence,
                           ObjectMapper objectMapper, SimpMessagingTemplate messaging) {
         this.repository = repository;
         this.executionService = executionService;
+        this.metricsPersistence = metricsPersistence;
         this.objectMapper = objectMapper;
         this.messaging = messaging;
     }
@@ -205,6 +208,7 @@ public class TestRunService {
     }
 
     public void delete(Long id) {
+        metricsPersistence.deleteMetricsForTest(id);
         repository.deleteById(id);
     }
 

@@ -1,6 +1,8 @@
 package com.gatlingweb.controller;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -8,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -17,6 +20,33 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public void handleNoResource(NoResourceFoundException e,
+                                 HttpServletRequest request,
+                                 HttpServletResponse response) throws Exception {
+        String path = request.getRequestURI();
+
+        // Silently ignore favicon requests
+        if (path.endsWith("/favicon.ico")) {
+            response.setStatus(204);
+            return;
+        }
+
+        // Forward to SPA for browser navigation (HTML requests to non-API paths)
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("text/html")
+                && !path.startsWith("/api/")
+                && !path.startsWith("/ws")
+                && !path.startsWith("/reports/")) {
+            request.getRequestDispatcher("/index.html").forward(request, response);
+            return;
+        }
+
+        response.setStatus(404);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"code\":\"NOT_FOUND\",\"error\":\"Resource not found\"}");
+    }
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException e) {

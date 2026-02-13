@@ -1,0 +1,26 @@
+[
+  {
+    "id": "basic-navigation",
+    "name": "Basic Navigation",
+    "description": "Open a page, verify the title and basic elements",
+    "fileName": "BasicNavigationScript.java"
+  },
+  {
+    "id": "login-flow",
+    "name": "Login Flow",
+    "description": "Fill a login form, submit and verify redirection",
+    "fileName": "LoginFlowScript.java"
+  },
+  {
+    "id": "form-submission",
+    "name": "Form Submission",
+    "description": "Fill and submit a form with various input types",
+    "fileName": "FormSubmissionScript.java"
+  },
+  {
+    "id": "multi-page-flow",
+    "name": "Multi-Page Flow",
+    "description": "Navigate across multiple pages with verifications",
+    "fileName": "MultiPageFlowScript.java"
+  }
+]

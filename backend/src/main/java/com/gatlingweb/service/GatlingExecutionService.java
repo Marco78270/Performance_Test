@@ -30,6 +30,7 @@ public class GatlingExecutionService {
 
     private final TestRunRepository repository;
     private final SimulationLogParser logParser;
+    private final MetricsPersistenceService metricsPersistence;
     private final SimpMessagingTemplate messaging;
     private final InfraMetricsScraperService infraScraper;
     private final ThresholdService thresholdService;
@@ -47,6 +48,7 @@ public class GatlingExecutionService {
     public GatlingExecutionService(
             TestRunRepository repository,
             SimulationLogParser logParser,
+            MetricsPersistenceService metricsPersistence,
             SimpMessagingTemplate messaging,
             InfraMetricsScraperService infraScraper,
             ThresholdService thresholdService,
@@ -55,6 +57,7 @@ public class GatlingExecutionService {
             @Value("${gatling.timeout-minutes:30}") long timeoutMinutes) {
         this.repository = repository;
         this.logParser = logParser;
+        this.metricsPersistence = metricsPersistence;
         this.messaging = messaging;
         this.infraScraper = infraScraper;
         this.thresholdService = thresholdService;
@@ -179,6 +182,9 @@ public class GatlingExecutionService {
     }
 
     private void doExecute(Long testRunId, LaunchRequest request) {
+        // Purge any stale metrics left from a previously deleted test with the same ID
+        metricsPersistence.deleteMetricsForTest(testRunId);
+
         Path gatlingDir = workspacePath.resolve("target/gatling");
 
         Set<String> existingDirs = new HashSet<>();

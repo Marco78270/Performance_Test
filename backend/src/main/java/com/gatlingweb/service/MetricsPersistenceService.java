@@ -73,6 +73,12 @@ public class MetricsPersistenceService {
         }
     }
 
+    @Transactional
+    public void deleteMetricsForTest(Long testRunId) {
+        metricsRepo.deleteByTestRunId(testRunId);
+        infraRepo.deleteByTestRunId(testRunId);
+    }
+
     public List<MetricsSnapshot> getMetrics(Long testRunId) {
         return metricsRepo.findByTestRunIdOrderByTimestampAsc(testRunId)
                 .stream()

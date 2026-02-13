@@ -16,6 +16,7 @@ class TestRunServiceLogicTest {
         service = new TestRunService(
                 mock(com.gatlingweb.repository.TestRunRepository.class),
                 mock(GatlingExecutionService.class),
+                mock(MetricsPersistenceService.class),
                 new com.fasterxml.jackson.databind.ObjectMapper(),
                 mock(org.springframework.messaging.simp.SimpMessagingTemplate.class)
         );

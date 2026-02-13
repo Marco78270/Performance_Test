@@ -122,7 +122,8 @@ export default function TestMonitorPage() {
     setHistoricalInfra([])
     fetchTestRun(testId).then((run) => {
       setTestRun(run)
-      if (run.status !== 'RUNNING' && run.status !== 'QUEUED') {
+      // Always load historical metrics (backfill for running tests, full data for completed)
+      if (run.status !== 'QUEUED') {
         fetchTestMetrics(testId).then(setHistoricalMetrics).catch(() => {})
         fetchInfraMetrics(testId).then(data => setHistoricalInfra(data as InfraMetricsSnapshot[])).catch(() => {})
       }
@@ -140,9 +141,30 @@ export default function TestMonitorPage() {
     setTestRun((prev) => prev ? { ...prev, status: 'CANCELLED' } : prev)
   }
 
-  // Use live metrics while running, historical metrics when finished
-  const metrics = testRun?.status === 'RUNNING' ? liveMetrics : (historicalMetrics.length > 0 ? historicalMetrics : liveMetrics)
-  const infraMetrics = testRun?.status === 'RUNNING' ? liveInfraMetrics : (historicalInfra.length > 0 ? historicalInfra : liveInfraMetrics)
+  // Merge historical (DB backfill) + live (WebSocket) for running tests
+  // For completed tests, use historical only
+  const metrics = useMemo(() => {
+    if (testRun?.status === 'RUNNING') {
+      if (historicalMetrics.length === 0) return liveMetrics
+      if (liveMetrics.length === 0) return historicalMetrics
+      // Merge: historical first, then live data that comes after the last historical point
+      const lastHistTs = historicalMetrics[historicalMetrics.length - 1].timestamp
+      const newLive = liveMetrics.filter(m => m.timestamp > lastHistTs)
+      return [...historicalMetrics, ...newLive]
+    }
+    return historicalMetrics.length > 0 ? historicalMetrics : liveMetrics
+  }, [testRun?.status, historicalMetrics, liveMetrics])
+
+  const infraMetrics = useMemo(() => {
+    if (testRun?.status === 'RUNNING') {
+      if (historicalInfra.length === 0) return liveInfraMetrics
+      if (liveInfraMetrics.length === 0) return historicalInfra
+      const lastHistTs = historicalInfra[historicalInfra.length - 1].timestamp
+      const newLive = liveInfraMetrics.filter(m => m.timestamp > lastHistTs)
+      return [...historicalInfra, ...newLive]
+    }
+    return historicalInfra.length > 0 ? historicalInfra : liveInfraMetrics
+  }, [testRun?.status, historicalInfra, liveInfraMetrics])
 
   // Lissage des données avec moyenne mobile sur 3 points
   const smoothedMetrics = useMemo(() => smoothData(metrics, 3), [metrics])

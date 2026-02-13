@@ -30,6 +30,8 @@ class TestRunServiceTest {
     @Mock
     private GatlingExecutionService executionService;
     @Mock
+    private MetricsPersistenceService metricsPersistence;
+    @Mock
     private SimpMessagingTemplate messaging;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -37,7 +39,7 @@ class TestRunServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TestRunService(repository, executionService, objectMapper, messaging);
+        service = new TestRunService(repository, executionService, metricsPersistence, objectMapper, messaging);
     }
 
     @Test

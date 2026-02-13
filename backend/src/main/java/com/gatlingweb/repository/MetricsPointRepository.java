@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface MetricsPointRepository extends JpaRepository<MetricsPoint, Long> {
     List<MetricsPoint> findByTestRunIdOrderByTimestampAsc(Long testRunId);
+    void deleteByTestRunId(Long testRunId);
 }

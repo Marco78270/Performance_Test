@@ -4,6 +4,7 @@ spring:
     driver-class-name: org.sqlite.JDBC
     hikari:
       maximum-pool-size: 1
+      connection-init-sql: PRAGMA foreign_keys = ON
   jpa:
     database-platform: org.hibernate.community.dialect.SQLiteDialect
     hibernate:
@@ -20,6 +21,12 @@ server:
 gatling:
   workspace: ${GATLING_WORKSPACE:../workspace}
   timeout-minutes: ${GATLING_TIMEOUT:30}
+
+selenium:
+  workspace: ${SELENIUM_WORKSPACE:../selenium-workspace}
+  grid-port: ${SELENIUM_GRID_PORT:4444}
+  max-sessions: ${SELENIUM_MAX_SESSIONS:10}
+  screenshots-dir: ${SELENIUM_SCREENSHOTS:../selenium-workspace/screenshots}
 
 app:
   security:

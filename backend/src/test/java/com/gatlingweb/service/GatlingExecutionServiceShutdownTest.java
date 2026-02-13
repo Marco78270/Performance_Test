@@ -22,6 +22,7 @@ class GatlingExecutionServiceShutdownTest {
         GatlingExecutionService service = new GatlingExecutionService(
                 repository,
                 mock(SimulationLogParser.class),
+                mock(MetricsPersistenceService.class),
                 mock(SimpMessagingTemplate.class),
                 mock(InfraMetricsScraperService.class),
                 mock(ThresholdService.class),
@@ -40,6 +41,7 @@ class GatlingExecutionServiceShutdownTest {
         GatlingExecutionService service = new GatlingExecutionService(
                 repository,
                 mock(SimulationLogParser.class),
+                mock(MetricsPersistenceService.class),
                 mock(SimpMessagingTemplate.class),
                 mock(InfraMetricsScraperService.class),
                 mock(ThresholdService.class),
