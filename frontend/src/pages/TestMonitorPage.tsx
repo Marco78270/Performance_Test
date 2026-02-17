@@ -3,13 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
-import { fetchTestRun, cancelTest, cancelQueuedTest, updateTestLabels, fetchTestMetrics, fetchInfraMetrics, type TestRun } from '../api/testRunApi'
+import { fetchTestRun, cancelTest, cancelQueuedTest, updateTestLabels, updateTestNotes, fetchTestMetrics, fetchInfraMetrics, type TestRun } from '../api/testRunApi'
 import { useMetricsWebSocket, useTestStatusWebSocket, useLogsWebSocket } from '../hooks/useWebSocket'
 import type { MetricsSnapshot } from '../api/testRunApi'
 import { useInfraMetricsWebSocket, type InfraMetricsSnapshot } from '../hooks/useInfraMetricsWebSocket'
 import ErrorBoundary from '../components/ErrorBoundary'
 import InfraMetricsPanel from '../components/InfraMetricsPanel'
 import ThresholdDetailsPanel from '../components/ThresholdDetailsPanel'
+import NotesEditor from '../components/NotesEditor'
 
 // Moyenne mobile pour lisser les courbes
 function smoothData(data: MetricsSnapshot[], windowSize = 3): MetricsSnapshot[] {
@@ -73,13 +74,7 @@ function formatTime(sec: unknown): string {
   return m > 0 ? `${m}m${s}s` : `${s}s`
 }
 
-const LABEL_COLORS = ['#3498db', '#9b59b6', '#e67e22', '#1abc9c', '#f39c12', '#e74c3c', '#2ecc71', '#34495e']
-function hashStr(str: string): number {
-  let h = 0
-  for (let i = 0; i < str.length; i++) { h = ((h << 5) - h) + str.charCodeAt(i); h |= 0 }
-  return Math.abs(h)
-}
-function getLabelColor(label: string): string { return LABEL_COLORS[hashStr(label) % LABEL_COLORS.length] }
+import { getLabelColor } from '../utils/labelColors'
 
 type TabType = 'gatling' | 'infra'
 
@@ -190,7 +185,7 @@ export default function TestMonitorPage() {
   }
 
   const last = metrics[metrics.length - 1]
-  const tooltipStyle = { background: '#16213e', border: '1px solid #0f3460' }
+  const tooltipStyle = { background: 'var(--tooltip-bg)', border: '1px solid var(--border-color)' }
 
   return (
     <div>
@@ -229,6 +224,22 @@ export default function TestMonitorPage() {
         <button className="btn btn-secondary" onClick={() => setShowLogs(!showLogs)}>
           {showLogs ? 'Hide Logs' : 'Show Logs'}
         </button>
+        {testRun.status !== 'RUNNING' && testRun.status !== 'QUEUED' && testRun.launchParams && (
+          <button className="btn btn-secondary" onClick={() => {
+            try {
+              const params = JSON.parse(testRun.launchParams!)
+              const q = new URLSearchParams()
+              if (params.simulationClass) q.set('simulationClass', params.simulationClass)
+              if (params.users) q.set('users', String(params.users))
+              if (params.rampUp != null) q.set('rampUp', String(params.rampUp))
+              if (params.rampUpDuration) q.set('rampUpDuration', String(params.rampUpDuration))
+              if (params.duration) q.set('duration', String(params.duration))
+              if (params.loop != null) q.set('loop', String(params.loop))
+              if (params.bandwidthLimitMbps) q.set('bandwidthLimitMbps', String(params.bandwidthLimitMbps))
+              navigate(`/?${q}`)
+            } catch { navigate('/') }
+          }}>Replay</button>
+        )}
         <button className="btn btn-secondary" onClick={() => navigate('/history')}>
           Back to History
         </button>
@@ -271,34 +282,44 @@ export default function TestMonitorPage() {
               onClick={() => { setShowAddLabel(false); setAddingLabel('') }}>&times;</button>
           </div>
         ) : (
-          <span style={{ cursor: 'pointer', color: '#a0a0b8', fontSize: '0.8rem' }}
+          <span style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.8rem' }}
             onClick={() => setShowAddLabel(true)}>+ Label</span>
         )}
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <NotesEditor
+          notes={testRun.notes}
+          onSave={async (notes) => {
+            await updateTestNotes(testId, notes)
+            setTestRun(prev => prev ? { ...prev, notes } : prev)
+          }}
+        />
       </div>
 
       {testRun.status === 'QUEUED' && (
         <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
           <div className="loading-spinner">Waiting in queue...</div>
-          <p style={{ color: '#a0a0b8', marginTop: '0.5rem' }}>This test will start automatically when the current test finishes.</p>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>This test will start automatically when the current test finishes.</p>
         </div>
       )}
 
       {last && (
         <div className="flex-row-wrap" style={{ marginBottom: '1rem' }}>
           <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: '#a0a0b8', fontSize: '0.85rem' }}>Total Requests</div>
-            <div style={{ fontSize: '1.5rem', color: '#fff' }}>{last.totalRequests ?? 0}</div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Total Requests</div>
+            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{last.totalRequests ?? 0}</div>
           </div>
           <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: '#a0a0b8', fontSize: '0.85rem' }}>Mean RT</div>
-            <div style={{ fontSize: '1.5rem', color: '#fff' }}>{(last.meanResponseTime ?? 0).toFixed(0)} ms</div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Mean RT</div>
+            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{(last.meanResponseTime ?? 0).toFixed(0)} ms</div>
           </div>
           <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: '#a0a0b8', fontSize: '0.85rem' }}>Active Users</div>
-            <div style={{ fontSize: '1.5rem', color: '#fff' }}>{last.activeUsers ?? 0}</div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Active Users</div>
+            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{last.activeUsers ?? 0}</div>
           </div>
           <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: '#a0a0b8', fontSize: '0.85rem' }}>Errors</div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Errors</div>
             <div style={{ fontSize: '1.5rem', color: '#e94560' }}>{last.totalErrors ?? 0}</div>
           </div>
         </div>
@@ -308,7 +329,7 @@ export default function TestMonitorPage() {
         <div className="card" style={{ marginBottom: '1rem' }}>
           <h3 style={{ marginBottom: '0.5rem' }}>Maven Output</h3>
           <div style={{
-            background: '#0d0d0d',
+            background: 'var(--bg-primary)',
             padding: '0.5rem',
             borderRadius: '4px',
             maxHeight: '200px',
@@ -318,7 +339,7 @@ export default function TestMonitorPage() {
             lineHeight: 1.4,
           }}>
             {logs.length === 0 ? (
-              <span style={{ color: '#666' }}>Waiting for output...</span>
+              <span style={{ color: 'var(--text-muted)' }}>Waiting for output...</span>
             ) : (
               logs.map((line, i) => {
                 const text = typeof line === 'string' ? line : String(line)
@@ -364,9 +385,9 @@ export default function TestMonitorPage() {
             <h3 style={{ marginBottom: '0.5rem' }}>Requests/s</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-                <XAxis dataKey="time" stroke="#a0a0b8" tickFormatter={formatTime} />
-                <YAxis stroke="#a0a0b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--text-secondary)" />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value) => [(Number(value) || 0).toFixed(2), 'req/s']} />
                 <Line type="monotone" dataKey="requestsPerSecond" stroke="#2980b9" dot={false} name="req/s" />
               </LineChart>
@@ -377,9 +398,9 @@ export default function TestMonitorPage() {
             <h3 style={{ marginBottom: '0.5rem' }}>Mean Response Time</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-                <XAxis dataKey="time" stroke="#a0a0b8" tickFormatter={formatTime} />
-                <YAxis stroke="#a0a0b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--text-secondary)" />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${(Number(value) || 0).toFixed(0)} ms`, 'Mean RT']} />
                 <Line type="monotone" dataKey="meanResponseTime" stroke="#e67e22" dot={false} name="Mean RT (ms)" />
               </LineChart>
@@ -390,9 +411,9 @@ export default function TestMonitorPage() {
             <h3 style={{ marginBottom: '0.5rem' }}>Active Users</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-                <XAxis dataKey="time" stroke="#a0a0b8" tickFormatter={formatTime} />
-                <YAxis stroke="#a0a0b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--text-secondary)" />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value) => [Number(value) || 0, 'users']} />
                 <Line type="monotone" dataKey="activeUsers" stroke="#9b59b6" dot={false} name="users" />
               </LineChart>
@@ -403,9 +424,9 @@ export default function TestMonitorPage() {
             <h3 style={{ marginBottom: '0.5rem' }}>Errors/s</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-                <XAxis dataKey="time" stroke="#a0a0b8" tickFormatter={formatTime} />
-                <YAxis stroke="#a0a0b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--text-secondary)" />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value) => [(Number(value) || 0).toFixed(2), 'err/s']} />
                 <Line type="monotone" dataKey="errorsPerSecond" stroke="#e94560" dot={false} name="err/s" />
               </LineChart>

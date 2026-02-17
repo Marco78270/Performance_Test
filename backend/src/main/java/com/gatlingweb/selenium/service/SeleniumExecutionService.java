@@ -86,6 +86,7 @@ public class SeleniumExecutionService {
         run.setStatus(TestStatus.QUEUED);
         run.setTotalInstances(request.instances());
         run.setTotalIterations(request.instances() * request.loops());
+        run.setHeadless(request.headless());
         run.setGridUrl(gridService.getGridUrl());
         return testRunRepository.save(run);
     }
@@ -212,7 +213,7 @@ public class SeleniumExecutionService {
             run.setFailedInstances(failedInstances.get());
             run.setPassedIterations(passedIterations.get());
             run.setFailedIterations(failedIterations.get());
-            run.setMeanStepDuration(metricsCollector.getOverallMeanStepDuration());
+            run.setMeanStepDuration(metricsCollector.getOverallMeanIterationDuration());
             run.setEndTime(System.currentTimeMillis());
             run.setStatus(cancelled ? TestStatus.CANCELLED :
                 (failedInstances.get() == 0 ? TestStatus.COMPLETED : TestStatus.FAILED));
@@ -298,15 +299,6 @@ public class SeleniumExecutionService {
                             var getStepsMethod = scriptClazz.getMethod("getSteps");
                             List<?> steps = (List<?>) getStepsMethod.invoke(scriptInstance);
                             result.setStepsJson(objectMapper.writeValueAsString(steps));
-
-                            // Report step durations to metrics collector
-                            for (Object step : steps) {
-                                try {
-                                    var getDuration = step.getClass().getMethod("getDurationMs");
-                                    long dur = ((Number) getDuration.invoke(step)).longValue();
-                                    metricsCollector.recordStepDuration(dur);
-                                } catch (Exception ignored) {}
-                            }
                         } catch (Exception ignored) {}
                     }
 
@@ -314,6 +306,7 @@ public class SeleniumExecutionService {
                     result.setEndTime(System.currentTimeMillis());
                     result.setDurationMs(result.getEndTime() - result.getStartTime());
                     passedIterations.incrementAndGet();
+                    metricsCollector.recordIterationDuration(result.getDurationMs());
                     metricsCollector.recordIterationComplete();
 
                 } catch (Exception e) {
@@ -323,6 +316,7 @@ public class SeleniumExecutionService {
                     result.setEndTime(System.currentTimeMillis());
                     result.setDurationMs(result.getEndTime() - result.getStartTime());
                     failedIterations.incrementAndGet();
+                    metricsCollector.recordIterationDuration(result.getDurationMs());
                     metricsCollector.recordIterationFailed();
                     anyFailed = true;
 

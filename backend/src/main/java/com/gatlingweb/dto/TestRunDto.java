@@ -27,7 +27,9 @@ public record TestRunDto(
     String thresholdVerdict,
     Long thresholdProfileId,
     List<ThresholdEvaluationResult> thresholdDetails,
-    Integer bandwidthLimitMbps
+    Integer bandwidthLimitMbps,
+    String notes,
+    String launchParams
 ) {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -58,7 +60,9 @@ public record TestRunDto(
             run.getThresholdVerdict() != null ? run.getThresholdVerdict().name() : null,
             run.getThresholdProfileId(),
             details,
-            run.getBandwidthLimitMbps()
+            run.getBandwidthLimitMbps(),
+            run.getNotes(),
+            run.getLaunchParams()
         );
     }
 }

@@ -18,6 +18,8 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -41,6 +43,7 @@ public class SeleniumController {
     private final SeleniumBrowserResultRepository resultRepository;
     private final AppSettingRepository appSettingRepository;
     private final MetricsPersistenceService metricsPersistenceService;
+    private final SeleniumPdfExportService pdfExportService;
 
     public SeleniumController(
             SeleniumFileService fileService,
@@ -52,7 +55,8 @@ public class SeleniumController {
             SeleniumTestRunRepository testRunRepository,
             SeleniumBrowserResultRepository resultRepository,
             AppSettingRepository appSettingRepository,
-            MetricsPersistenceService metricsPersistenceService) {
+            MetricsPersistenceService metricsPersistenceService,
+            SeleniumPdfExportService pdfExportService) {
         this.fileService = fileService;
         this.templateService = templateService;
         this.executionService = executionService;
@@ -63,6 +67,7 @@ public class SeleniumController {
         this.resultRepository = resultRepository;
         this.appSettingRepository = appSettingRepository;
         this.metricsPersistenceService = metricsPersistenceService;
+        this.pdfExportService = pdfExportService;
     }
 
     // --- File management ---
@@ -206,6 +211,15 @@ public class SeleniumController {
         return metricsPersistenceService.getInfraMetrics(id);
     }
 
+    @GetMapping("/tests/{id}/export/pdf")
+    public ResponseEntity<byte[]> exportPdf(@PathVariable Long id) {
+        byte[] pdf = pdfExportService.generatePdf(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=selenium-report-" + id + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
+
     @DeleteMapping("/tests/{id}")
     @Transactional
     public ResponseEntity<?> deleteTest(@PathVariable Long id) {
@@ -219,6 +233,18 @@ public class SeleniumController {
     public ResponseEntity<?> cancelTest(@PathVariable Long id) {
         executionService.cancel(id);
         return ResponseEntity.ok(Map.of("status", "cancelled"));
+    }
+
+    // --- Notes ---
+
+    @PutMapping("/tests/{id}/notes")
+    @Transactional
+    public ResponseEntity<?> updateNotes(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        testRunRepository.findById(id).ifPresent(run -> {
+            run.setNotes(body.get("notes"));
+            testRunRepository.save(run);
+        });
+        return ResponseEntity.ok(Map.of("status", "updated"));
     }
 
     // --- Version & Labels ---

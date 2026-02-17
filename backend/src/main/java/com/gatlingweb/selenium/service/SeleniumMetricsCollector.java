@@ -26,14 +26,14 @@ public class SeleniumMetricsCollector {
     private final SeleniumMetricsPointRepository metricsRepository;
 
     // Accumulators (thread-safe)
-    private final ConcurrentLinkedQueue<Long> windowStepDurations = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<Long> windowIterationDurations = new ConcurrentLinkedQueue<>();
     private final AtomicLong windowIterations = new AtomicLong(0);
     private final AtomicLong windowErrors = new AtomicLong(0);
     private final AtomicLong totalIterations = new AtomicLong(0);
     private final AtomicLong totalErrors = new AtomicLong(0);
     private final AtomicInteger activeBrowsers = new AtomicInteger(0);
-    private final AtomicLong allStepDurationsSum = new AtomicLong(0);
-    private final AtomicLong allStepDurationsCount = new AtomicLong(0);
+    private final AtomicLong allIterationDurationsSum = new AtomicLong(0);
+    private final AtomicLong allIterationDurationsCount = new AtomicLong(0);
 
     private volatile Long currentTestRunId;
     private ScheduledExecutorService scheduler;
@@ -47,14 +47,14 @@ public class SeleniumMetricsCollector {
 
     public void start(Long testRunId) {
         this.currentTestRunId = testRunId;
-        windowStepDurations.clear();
+        windowIterationDurations.clear();
         windowIterations.set(0);
         windowErrors.set(0);
         totalIterations.set(0);
         totalErrors.set(0);
         activeBrowsers.set(0);
-        allStepDurationsSum.set(0);
-        allStepDurationsCount.set(0);
+        allIterationDurationsSum.set(0);
+        allIterationDurationsCount.set(0);
         dbBuffer.clear();
 
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -85,10 +85,10 @@ public class SeleniumMetricsCollector {
         activeBrowsers.decrementAndGet();
     }
 
-    public void recordStepDuration(long durationMs) {
-        windowStepDurations.add(durationMs);
-        allStepDurationsSum.addAndGet(durationMs);
-        allStepDurationsCount.incrementAndGet();
+    public void recordIterationDuration(long durationMs) {
+        windowIterationDurations.add(durationMs);
+        allIterationDurationsSum.addAndGet(durationMs);
+        allIterationDurationsCount.incrementAndGet();
     }
 
     public void recordIterationComplete() {
@@ -110,10 +110,10 @@ public class SeleniumMetricsCollector {
             Long testRunId = currentTestRunId;
             if (testRunId == null) return;
 
-            // 1. Drain step durations
+            // 1. Drain iteration durations
             List<Long> durations = new ArrayList<>();
             Long d;
-            while ((d = windowStepDurations.poll()) != null) {
+            while ((d = windowIterationDurations.poll()) != null) {
                 durations.add(d);
             }
 
@@ -203,10 +203,10 @@ public class SeleniumMetricsCollector {
         return null;
     }
 
-    public Double getOverallMeanStepDuration() {
-        long count = allStepDurationsCount.get();
+    public Double getOverallMeanIterationDuration() {
+        long count = allIterationDurationsCount.get();
         if (count == 0) return null;
-        return (double) allStepDurationsSum.get() / count;
+        return (double) allIterationDurationsSum.get() / count;
     }
 
     // --- Query API ---

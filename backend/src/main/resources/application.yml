@@ -29,6 +29,7 @@ selenium:
   screenshots-dir: ${SELENIUM_SCREENSHOTS:../selenium-workspace/screenshots}
 
 app:
+  version: "2.0"
   security:
     username: ${APP_USERNAME:admin}
     password: ${APP_PASSWORD:admin}

@@ -21,6 +21,8 @@ export interface SeleniumTestRun {
   labels: string
   gridUrl: string | null
   meanStepDuration: number | null
+  notes: string | null
+  headless: boolean
 }
 
 export interface StepResult {
@@ -248,6 +250,15 @@ export async function updateSeleniumTestVersion(id: number, version: string): Pr
     body: JSON.stringify({ version }),
   })
   if (!res.ok) throw new Error('Failed to update version')
+}
+
+export async function updateSeleniumTestNotes(id: number, notes: string): Promise<void> {
+  const res = await authFetch(`/api/selenium/tests/${id}/notes`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notes }),
+  })
+  if (!res.ok) throw new Error('Failed to update notes')
 }
 
 export async function updateSeleniumTestLabels(id: number, labels: string[]): Promise<void> {

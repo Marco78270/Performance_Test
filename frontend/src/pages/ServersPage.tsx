@@ -45,7 +45,7 @@ function ServerModal({ server, onClose, onSave }: ServerModalProps) {
         <h3>{server ? 'Edit Server' : 'Add Server'}</h3>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#a0a0b8' }}>Name</label>
+            <label style={{ display: 'block', marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>Name</label>
             <input
               type="text"
               value={name}
@@ -56,7 +56,7 @@ function ServerModal({ server, onClose, onSave }: ServerModalProps) {
             />
           </div>
           <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#a0a0b8' }}>URL</label>
+            <label style={{ display: 'block', marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>URL</label>
             <input
               type="text"
               value={url}
@@ -67,7 +67,7 @@ function ServerModal({ server, onClose, onSave }: ServerModalProps) {
             />
           </div>
           <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#a0a0b8' }}>Type</label>
+            <label style={{ display: 'block', marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>Type</label>
             <select
               value={serverType}
               onChange={(e) => setServerType(e.target.value as ServerType)}
@@ -173,7 +173,7 @@ export default function ServersPage() {
 
       <div className="card">
         {servers.length === 0 ? (
-          <p style={{ color: '#a0a0b8' }}>
+          <p style={{ color: 'var(--text-secondary)' }}>
             No servers configured. Add a Windows Exporter endpoint to start monitoring infrastructure metrics.
           </p>
         ) : (
@@ -205,13 +205,13 @@ export default function ServersPage() {
                       ) : server.lastSeenAt ? (
                         <span style={{ color: '#27ae60' }}>Online</span>
                       ) : (
-                        <span style={{ color: '#a0a0b8' }}>Unknown</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>Unknown</span>
                       )
                     ) : (
                       <span style={{ color: '#7f8c8d' }}>Disabled</span>
                     )}
                   </td>
-                  <td style={{ fontSize: '0.85rem', color: '#a0a0b8' }}>
+                  <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     {formatDate(server.lastSeenAt)}
                   </td>
                   <td>

@@ -15,7 +15,6 @@ public interface TestRunRepository extends JpaRepository<TestRun, Long> {
     Optional<TestRun> findByStatus(TestStatus status);
     List<TestRun> findAllByOrderByStartTimeDesc();
     Page<TestRun> findAll(Pageable pageable);
-    List<TestRun> findByVersionOrderByStartTimeDesc(String version);
     List<TestRun> findBySimulationClassOrderByStartTimeDesc(String simulationClass);
     Page<TestRun> findByLabelsContaining(String label, Pageable pageable);
     List<TestRun> findByStatusOrderByStartTimeAsc(TestStatus status);
@@ -35,5 +34,4 @@ public interface TestRunRepository extends JpaRepository<TestRun, Long> {
     @Query("SELECT AVG(t.meanResponseTime) FROM TestRun t WHERE t.status = 'COMPLETED' AND t.startTime > :after AND t.meanResponseTime IS NOT NULL")
     Double avgMeanResponseTimeAfter(@org.springframework.data.repository.query.Param("after") java.time.LocalDateTime after);
 
-    List<TestRun> findByStatusIn(List<TestStatus> statuses);
 }

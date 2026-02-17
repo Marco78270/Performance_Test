@@ -24,12 +24,6 @@ export async function fetchServers(): Promise<MonitoredServer[]> {
   return res.json()
 }
 
-export async function fetchServer(id: number): Promise<MonitoredServer> {
-  const res = await authFetch(`/api/servers/${id}`)
-  if (!res.ok) throw new Error('Failed to fetch server')
-  return res.json()
-}
-
 export async function createServer(request: CreateServerRequest): Promise<MonitoredServer> {
   const res = await authFetch('/api/servers', {
     method: 'POST',

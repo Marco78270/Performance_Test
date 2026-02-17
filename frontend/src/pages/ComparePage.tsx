@@ -6,10 +6,7 @@ import {
 } from 'recharts'
 import { fetchComparison, type ComparisonResult } from '../api/comparisonApi'
 import { fetchTestMetrics, type TestRun, type MetricsSnapshot } from '../api/testRunApi'
-
-const LABEL_COLORS = ['#3498db', '#9b59b6', '#e67e22', '#1abc9c', '#f39c12', '#e74c3c', '#2ecc71', '#34495e']
-function hashStr(s: string) { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0 } return Math.abs(h) }
-function getLabelColor(l: string) { return LABEL_COLORS[hashStr(l) % LABEL_COLORS.length] }
+import { getLabelColor } from '../utils/labelColors'
 
 const METRIC_LABELS: Record<string, string> = {
   meanResponseTime: 'Mean RT (ms)',
@@ -112,7 +109,7 @@ export default function ComparePage() {
   if (!data) return null
 
   const { testA, testB, diffPercent } = data
-  const tooltipStyle = { background: '#16213e', border: '1px solid #0f3460' }
+  const tooltipStyle = { background: 'var(--tooltip-bg)', border: '1px solid var(--border-color)' }
 
   const rtChartData = RT_METRICS.map(m => ({
     name: METRIC_LABELS[m],
@@ -144,9 +141,9 @@ export default function ComparePage() {
       {/* Test headers */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
         <div className="card">
-          <div style={{ fontSize: '0.8rem', color: '#a0a0b8', marginBottom: '0.3rem' }}>Test A (#{testA.id})</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Test A (#{testA.id})</div>
           <div style={{ fontWeight: 600, color: '#2980b9', fontSize: '1.1rem' }}>{testA.simulationClass}</div>
-          <div style={{ color: '#a0a0b8', fontSize: '0.85rem', marginTop: '0.3rem' }}>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.3rem' }}>
             {formatDate(testA.startTime)} &middot; {formatDuration(testA)}
             {testA.version && <> &middot; v{testA.version}</>}
           </div>
@@ -157,9 +154,9 @@ export default function ComparePage() {
           </div>
         </div>
         <div className="card">
-          <div style={{ fontSize: '0.8rem', color: '#a0a0b8', marginBottom: '0.3rem' }}>Test B (#{testB.id})</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Test B (#{testB.id})</div>
           <div style={{ fontWeight: 600, color: '#e94560', fontSize: '1.1rem' }}>{testB.simulationClass}</div>
-          <div style={{ color: '#a0a0b8', fontSize: '0.85rem', marginTop: '0.3rem' }}>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.3rem' }}>
             {formatDate(testB.startTime)} &middot; {formatDuration(testB)}
             {testB.version && <> &middot; v{testB.version}</>}
           </div>
@@ -177,9 +174,9 @@ export default function ComparePage() {
           <h3 style={{ marginBottom: '0.5rem' }}>Response Times</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={rtChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-              <XAxis dataKey="name" stroke="#a0a0b8" tick={{ fontSize: 12 }} />
-              <YAxis stroke="#a0a0b8" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="name" stroke="var(--text-secondary)" tick={{ fontSize: 12 }} />
+              <YAxis stroke="var(--text-secondary)" />
               <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${Number(v).toFixed(1)} ms`]} />
               <Legend />
               <Bar dataKey="Test A" fill="#2980b9" />
@@ -192,9 +189,9 @@ export default function ComparePage() {
           <h3 style={{ marginBottom: '0.5rem' }}>Throughput</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={throughputData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-              <XAxis dataKey="name" stroke="#a0a0b8" tick={{ fontSize: 12 }} />
-              <YAxis stroke="#a0a0b8" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="name" stroke="var(--text-secondary)" tick={{ fontSize: 12 }} />
+              <YAxis stroke="var(--text-secondary)" />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend />
               <Bar dataKey="Test A" fill="#2980b9" />
@@ -233,7 +230,7 @@ export default function ComparePage() {
                   <td>{valA != null ? valA.toFixed(1) : '-'}</td>
                   <td>{valB != null ? valB.toFixed(1) : '-'}</td>
                   <td style={{
-                    color: improved ? '#27ae60' : degraded ? '#e94560' : '#a0a0b8',
+                    color: improved ? '#27ae60' : degraded ? '#e94560' : 'var(--text-secondary)',
                     fontWeight: 600,
                   }}>
                     {diff != null ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : '-'}
@@ -241,7 +238,7 @@ export default function ComparePage() {
                   <td>
                     {improved && <span style={{ color: '#27ae60' }}>&#9650; Better</span>}
                     {degraded && <span style={{ color: '#e94560' }}>&#9660; Worse</span>}
-                    {!improved && !degraded && <span style={{ color: '#a0a0b8' }}>-</span>}
+                    {!improved && !degraded && <span style={{ color: 'var(--text-secondary)' }}>-</span>}
                   </td>
                 </tr>
               )
@@ -257,9 +254,9 @@ export default function ComparePage() {
             <h3 style={{ marginBottom: '0.5rem' }}>Requests/s Over Time</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={overlayData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-                <XAxis dataKey="time" stroke="#a0a0b8" tickFormatter={formatTime} />
-                <YAxis stroke="#a0a0b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--text-secondary)" />
                 <Tooltip contentStyle={tooltipStyle} labelFormatter={(l) => formatTime(Number(l))} />
                 <Legend />
                 <Line type="monotone" dataKey="rpsA" stroke="#2980b9" dot={false} name="Test A" connectNulls />
@@ -272,9 +269,9 @@ export default function ComparePage() {
             <h3 style={{ marginBottom: '0.5rem' }}>p95 Response Time Over Time</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={overlayData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-                <XAxis dataKey="time" stroke="#a0a0b8" tickFormatter={formatTime} />
-                <YAxis stroke="#a0a0b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--text-secondary)" />
                 <Tooltip contentStyle={tooltipStyle} labelFormatter={(l) => formatTime(Number(l))} formatter={(v) => [`${Number(v).toFixed(0)} ms`]} />
                 <Legend />
                 <Line type="monotone" dataKey="p95A" stroke="#2980b9" dot={false} name="Test A" connectNulls />
@@ -287,9 +284,9 @@ export default function ComparePage() {
             <h3 style={{ marginBottom: '0.5rem' }}>Active Users Over Time</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={overlayData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-                <XAxis dataKey="time" stroke="#a0a0b8" tickFormatter={formatTime} />
-                <YAxis stroke="#a0a0b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--text-secondary)" />
                 <Tooltip contentStyle={tooltipStyle} labelFormatter={(l) => formatTime(Number(l))} />
                 <Legend />
                 <Line type="monotone" dataKey="usersA" stroke="#2980b9" dot={false} name="Test A" connectNulls />

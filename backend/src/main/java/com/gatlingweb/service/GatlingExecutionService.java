@@ -378,11 +378,4 @@ public class GatlingExecutionService {
         log.info("GatlingExecutionService shutdown complete");
     }
 
-    public boolean isRunning() {
-        return currentProcess != null && currentProcess.isAlive();
-    }
-
-    public Long getCurrentTestRunId() {
-        return currentTestRunId;
-    }
 }

@@ -36,12 +36,6 @@ export async function fetchThresholdProfiles(): Promise<ThresholdProfile[]> {
   return res.json()
 }
 
-export async function fetchThresholdProfile(id: number): Promise<ThresholdProfile> {
-  const res = await authFetch(`/api/thresholds/${id}`)
-  if (!res.ok) throw new Error('Failed to fetch threshold profile')
-  return res.json()
-}
-
 export async function createThresholdProfile(request: CreateThresholdProfileRequest): Promise<ThresholdProfile> {
   const res = await authFetch('/api/thresholds', {
     method: 'POST',

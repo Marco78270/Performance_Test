@@ -91,6 +91,12 @@ public class TestRunController {
         return ResponseEntity.ok(Map.of("status", "updated"));
     }
 
+    @PutMapping("/{id}/notes")
+    public ResponseEntity<?> updateNotes(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        testRunService.updateNotes(id, body.get("notes"));
+        return ResponseEntity.ok(Map.of("status", "updated"));
+    }
+
     @PutMapping("/{id}/labels")
     public ResponseEntity<?> updateLabels(@PathVariable Long id, @RequestBody UpdateLabelsRequest request) {
         testRunService.updateLabels(id, request.labels());

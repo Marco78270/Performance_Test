@@ -251,7 +251,7 @@ public class BandwidthLimiterService {
     /**
      * Force remove regardless of limitApplied flag (for shutdown safety).
      */
-    public void forceRemoveLimit() {
+    private void forceRemoveLimit() {
         try {
             if (isWindows) {
                 removeWindowsLimit();
@@ -273,7 +273,4 @@ public class BandwidthLimiterService {
         log.info("BandwidthLimiterService shutdown complete");
     }
 
-    public boolean isLimitApplied() {
-        return limitApplied;
-    }
 }

@@ -34,14 +34,14 @@ export default function SeleniumConfigPage() {
   }
 
   const labelStyle: React.CSSProperties = {
-    color: '#a0a0b8',
+    color: 'var(--text-secondary)',
     fontSize: '0.85rem',
     display: 'block',
     marginBottom: '0.3rem',
   }
 
   const hintStyle: React.CSSProperties = {
-    color: '#666',
+    color: 'var(--text-muted)',
     fontSize: '0.75rem',
     marginTop: '0.2rem',
   }
@@ -52,7 +52,7 @@ export default function SeleniumConfigPage() {
 
       <div className="card" style={{ marginTop: '1rem' }}>
         <h3>WebDriver Paths</h3>
-        <p style={{ color: '#a0a0b8', fontSize: '0.85rem', marginBottom: '1rem' }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1rem' }}>
           Configure local paths to WebDriver executables. Leave empty to auto-download via WebDriverManager.
         </p>
 

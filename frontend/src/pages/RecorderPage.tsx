@@ -23,12 +23,12 @@ export default function RecorderPage() {
       <h1 className="page-title">Gatling Recorder</h1>
 
       <div className="card">
-        <p style={{ marginBottom: '1rem', color: '#a0a0b8' }}>
+        <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
           The Gatling Recorder allows you to capture browser interactions and generate Gatling simulation scripts.
           It starts a proxy server that records HTTP requests and responses.
         </p>
         <h3>How to use:</h3>
-        <ol style={{ marginLeft: '1.5rem', marginTop: '0.5rem', color: '#a0a0b8', lineHeight: 1.8 }}>
+        <ol style={{ marginLeft: '1.5rem', marginTop: '0.5rem', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
           <li>Click "Launch Recorder" to start the Gatling Recorder GUI</li>
           <li>Configure your browser to use the recorder's proxy (default: localhost:8000)</li>
           <li>Browse your target application</li>

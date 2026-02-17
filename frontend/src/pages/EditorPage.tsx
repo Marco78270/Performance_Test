@@ -24,7 +24,7 @@ function FileTree({
         <li key={f.path}>
           {f.directory ? (
             <details open>
-              <summary style={{ cursor: 'pointer', padding: '0.2rem 0', color: '#a0a0b8', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <summary style={{ cursor: 'pointer', padding: '0.2rem 0', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 <span style={{ flex: 1 }}>{f.name}</span>
                 <button
                   className="btn btn-secondary"
@@ -45,8 +45,8 @@ function FileTree({
                 cursor: 'pointer',
                 padding: '0.2rem 0.4rem',
                 borderRadius: '3px',
-                background: f.path === selectedPath ? '#0f3460' : 'transparent',
-                color: f.path === selectedPath ? '#e94560' : '#e0e0e0',
+                background: f.path === selectedPath ? 'var(--bg-hover)' : 'transparent',
+                color: f.path === selectedPath ? 'var(--accent)' : 'var(--text-primary)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.3rem',
@@ -192,7 +192,7 @@ export default function EditorPage() {
     <div style={{ display: 'flex', height: 'calc(100vh - 3rem)', gap: '1rem' }}>
       <div style={{ width: '250px', overflowY: 'auto', flexShrink: 0 }}>
         <div className="flex-row" style={{ marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-          <h2 style={{ fontSize: '1.1rem', color: '#fff' }}>Files</h2>
+          <h2 style={{ fontSize: '1.1rem', color: 'var(--text-heading)' }}>Files</h2>
           <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
             onClick={() => setShowNewFile(!showNewFile)}>+ New</button>
           <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
@@ -224,7 +224,7 @@ export default function EditorPage() {
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div className="flex-row" style={{ marginBottom: '0.5rem' }}>
-          <span style={{ flex: 1, color: '#a0a0b8' }}>
+          <span style={{ flex: 1, color: 'var(--text-secondary)' }}>
             {selectedPath || 'Select a file'}
             {dirty && ' *'}
           </span>
@@ -235,7 +235,7 @@ export default function EditorPage() {
             <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
           )}
         </div>
-        <div style={{ flex: 1, border: '1px solid #0f3460', borderRadius: '4px', overflow: 'hidden' }}>
+        <div style={{ flex: 1, border: '1px solid var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
           <Editor
             language="scala"
             theme="vs-dark"
@@ -303,33 +303,33 @@ export default function EditorPage() {
                     style={{
                       padding: '0.6rem',
                       borderRadius: '6px',
-                      border: selectedTemplate === t.id ? '2px solid #e94560' : '1px solid #0f3460',
-                      background: selectedTemplate === t.id ? '#0f346040' : '#1a1a2e',
+                      border: selectedTemplate === t.id ? '2px solid #e94560' : '1px solid var(--border-color)',
+                      background: selectedTemplate === t.id ? 'var(--bg-hover)' : 'var(--bg-primary)',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                     }}>
-                    <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.85rem' }}>{t.name}</div>
-                    <div style={{ color: '#a0a0b8', fontSize: '0.75rem', marginTop: '0.2rem' }}>{t.description}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-heading)', fontSize: '0.85rem' }}>{t.name}</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.2rem' }}>{t.description}</div>
                   </div>
                 ))}
               </div>
 
               <div>
-                <label style={{ color: '#a0a0b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>File Name</label>
+                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>File Name</label>
                 <input type="text" placeholder="MySimulation.scala" value={templateFileName}
                   onChange={(e) => setTemplateFileName(e.target.value)}
                   style={{ width: '100%' }} />
               </div>
 
               <div>
-                <label style={{ color: '#a0a0b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Package (optional)</label>
+                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Package (optional)</label>
                 <input type="text" placeholder="com.example" value={templatePackage}
                   onChange={(e) => setTemplatePackage(e.target.value)}
                   style={{ width: '100%' }} />
               </div>
 
               <div>
-                <label style={{ color: '#a0a0b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Base URL</label>
+                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Base URL</label>
                 <input type="text" value={templateBaseUrl}
                   onChange={(e) => setTemplateBaseUrl(e.target.value)}
                   style={{ width: '100%' }} />

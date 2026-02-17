@@ -5,26 +5,12 @@ import {
   updateSeleniumTestVersion, updateSeleniumTestLabels, fetchSeleniumAllLabels,
   type SeleniumTestRun, type SeleniumPage,
 } from '../api/seleniumApi'
+import { getLabelColor } from '../utils/labelColors'
 
 type SortField = 'startTime' | 'scriptClass' | 'status' | 'id'
 type SortDir = 'asc' | 'desc'
 type StatusFilter = '' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'RUNNING' | 'QUEUED'
 type ViewMode = 'list' | 'folders'
-
-const LABEL_COLORS = ['#3498db', '#9b59b6', '#e67e22', '#1abc9c', '#f39c12', '#e74c3c', '#2ecc71', '#34495e']
-
-function hashString(str: string): number {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i)
-    hash |= 0
-  }
-  return Math.abs(hash)
-}
-
-function getLabelColor(label: string): string {
-  return LABEL_COLORS[hashString(label) % LABEL_COLORS.length]
-}
 
 function parseLabels(labels: string): string[] {
   if (!labels) return []
@@ -238,7 +224,7 @@ export default function SeleniumHistoryPage() {
       <tr key={run.id}>
         <td>{run.scriptClass}</td>
         <td style={{ textTransform: 'capitalize' }}>{run.browser}</td>
-        <td>{run.instances}{run.loops > 1 && <span style={{ color: '#a0a0b8' }}> x{run.loops}</span>}</td>
+        <td>{run.instances}{run.loops > 1 && <span style={{ color: 'var(--text-secondary)' }}> x{run.loops}</span>}</td>
         {showVersion && (
           <td>
             {editingVersion?.id === run.id ? (
@@ -252,7 +238,7 @@ export default function SeleniumHistoryPage() {
               </div>
             ) : (
               <span onClick={() => setEditingVersion({ id: run.id, value: run.version || '' })}
-                style={{ cursor: 'pointer', borderBottom: '1px dashed #a0a0b8' }}>
+                style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-secondary)' }}>
                 {run.version || '-'}
               </span>
             )}
@@ -293,12 +279,12 @@ export default function SeleniumHistoryPage() {
                 {showAddLabelSuggestions && addLabelSuggestions.length > 0 && (
                   <div style={{
                     position: 'absolute', top: '100%', left: 0, zIndex: 10,
-                    background: '#16213e', border: '1px solid #0f3460', borderRadius: '4px',
+                    background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '4px',
                     maxHeight: '120px', overflowY: 'auto', width: '140px', marginTop: '2px'
                   }}>
                     {addLabelSuggestions.slice(0, 8).map(l => (
                       <div key={l}
-                        style={{ padding: '0.2rem 0.4rem', cursor: 'pointer', fontSize: '0.75rem', color: '#e0e0e0' }}
+                        style={{ padding: '0.2rem 0.4rem', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-primary)' }}
                         onMouseDown={() => {
                           setAddingLabel({ ...addingLabel!, value: l })
                           setShowAddLabelSuggestions(false)
@@ -310,7 +296,7 @@ export default function SeleniumHistoryPage() {
               </div>
             ) : (
               <span
-                style={{ cursor: 'pointer', color: '#a0a0b8', fontSize: '0.75rem' }}
+                style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.75rem' }}
                 onClick={() => setAddingLabel({ id: run.id, value: '' })}
                 title="Add label"
               >+</span>
@@ -365,7 +351,7 @@ export default function SeleniumHistoryPage() {
       <div className="card" style={{ padding: '0.6rem 1.2rem', marginBottom: '0.5rem' }}>
         <div className="flex-row" style={{ flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <span style={{ color: '#a0a0b8', fontSize: '0.85rem', marginRight: '0.5rem' }}>Browser:</span>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginRight: '0.5rem' }}>Browser:</span>
             <select value={filterBrowser} onChange={(e) => { setFilterBrowser(e.target.value); setPageNum(0) }}
               style={{ fontSize: '0.85rem' }}>
               <option value="">All</option>
@@ -375,7 +361,7 @@ export default function SeleniumHistoryPage() {
             </select>
           </div>
           <div style={{ position: 'relative' }}>
-            <span style={{ color: '#a0a0b8', fontSize: '0.85rem', marginRight: '0.5rem' }}>Label:</span>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginRight: '0.5rem' }}>Label:</span>
             <input
               type="text"
               placeholder="Filter by label..."
@@ -388,12 +374,12 @@ export default function SeleniumHistoryPage() {
             {showLabelSuggestions && labelFilterSuggestions.length > 0 && (
               <div style={{
                 position: 'absolute', top: '100%', left: 0, zIndex: 10,
-                background: '#16213e', border: '1px solid #0f3460', borderRadius: '4px',
+                background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '4px',
                 maxHeight: '150px', overflowY: 'auto', width: '180px', marginTop: '2px'
               }}>
                 {labelFilterSuggestions.map(l => (
                   <div key={l}
-                    style={{ padding: '0.3rem 0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: '#e0e0e0' }}
+                    style={{ padding: '0.3rem 0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-primary)' }}
                     onMouseDown={() => { setFilterLabel(l); setPageNum(0); setShowLabelSuggestions(false) }}
                   >{l}</div>
                 ))}
@@ -405,7 +391,7 @@ export default function SeleniumHistoryPage() {
             )}
           </div>
           <div>
-            <span style={{ color: '#a0a0b8', fontSize: '0.85rem', marginRight: '0.5rem' }}>Status:</span>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginRight: '0.5rem' }}>Status:</span>
             <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
               style={{ fontSize: '0.85rem' }}>
               <option value="">All</option>
@@ -417,7 +403,7 @@ export default function SeleniumHistoryPage() {
             </select>
           </div>
           <div style={{ display: 'flex', gap: '2px', marginLeft: 'auto' }}>
-            <span style={{ color: '#a0a0b8', fontSize: '0.85rem', marginRight: '0.5rem', alignSelf: 'center' }}>View:</span>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginRight: '0.5rem', alignSelf: 'center' }}>View:</span>
             <button
               className={`btn ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
               style={{ fontSize: '0.8rem', padding: '0.25rem 0.6rem', borderRadius: '4px 0 0 4px' }}
@@ -457,7 +443,7 @@ export default function SeleniumHistoryPage() {
                 <tbody>
                   {filteredContent.map((run) => renderTestRow(run, true))}
                   {filteredContent.length === 0 && (
-                    <tr><td colSpan={11} style={{ textAlign: 'center', color: '#a0a0b8' }}>No tests found</td></tr>
+                    <tr><td colSpan={11} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No tests found</td></tr>
                   )}
                 </tbody>
               </table>
@@ -468,7 +454,7 @@ export default function SeleniumHistoryPage() {
                     onClick={() => setPageNum(0)} style={{ padding: '0.3rem 0.6rem' }}>First</button>
                   <button className="btn btn-secondary" disabled={page.first}
                     onClick={() => setPageNum((p) => p - 1)} style={{ padding: '0.3rem 0.6rem' }}>Prev</button>
-                  <span style={{ color: '#a0a0b8' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>
                     Page {page.number + 1} of {page.totalPages} ({page.totalElements} total)
                   </span>
                   <button className="btn btn-secondary" disabled={page.last}
@@ -492,7 +478,7 @@ export default function SeleniumHistoryPage() {
                 </div>
               )}
               {groups.length === 0 && (
-                <div className="card" style={{ textAlign: 'center', color: '#a0a0b8', padding: '2rem' }}>No tests found</div>
+                <div className="card" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>No tests found</div>
               )}
               {groups.map(group => {
                 const expanded = expandedVersions.has(group.version)
@@ -512,23 +498,23 @@ export default function SeleniumHistoryPage() {
                         transition: 'background 0.15s',
                       }}
                     >
-                      <span style={{ color: '#e94560', fontSize: '0.85rem', width: '1rem', textAlign: 'center', flexShrink: 0 }}>
+                      <span style={{ color: 'var(--accent)', fontSize: '0.85rem', width: '1rem', textAlign: 'center', flexShrink: 0 }}>
                         {expanded ? '\u25BC' : '\u25B6'}
                       </span>
                       <span style={{
                         fontWeight: 600, fontSize: '1rem',
                         fontStyle: group.version === 'No version' ? 'italic' : 'normal',
-                        color: group.version === 'No version' ? '#a0a0b8' : '#e0e0e0'
+                        color: group.version === 'No version' ? 'var(--text-secondary)' : 'var(--text-primary)'
                       }}>
                         {group.version}
                       </span>
                       <span style={{
-                        background: '#0f3460', color: '#a0a0b8', fontSize: '0.75rem',
+                        background: 'var(--bg-hover)', color: 'var(--text-secondary)', fontSize: '0.75rem',
                         padding: '0.15rem 0.5rem', borderRadius: '10px', fontWeight: 500
                       }}>
                         {group.tests.length} test{group.tests.length !== 1 ? 's' : ''}
                       </span>
-                      <span style={{ color: '#a0a0b8', fontSize: '0.8rem', marginLeft: 'auto', display: 'flex', gap: '0.8rem' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginLeft: 'auto', display: 'flex', gap: '0.8rem' }}>
                         {completed > 0 && <span style={{ color: '#2ecc71' }}>{completed} passed</span>}
                         {failed > 0 && <span style={{ color: '#e94560' }}>{failed} failed</span>}
                         <span>Last: {latest.startTime ? new Date(latest.startTime).toLocaleDateString() : '-'}</span>

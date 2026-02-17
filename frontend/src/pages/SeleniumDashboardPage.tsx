@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   fetchSeleniumClasses, fetchGridStatus, launchSeleniumTest,
   fetchSeleniumTests, type SeleniumTestRun,
@@ -7,21 +7,26 @@ import {
 
 export default function SeleniumDashboardPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [classes, setClasses] = useState<string[]>([])
-  const [scriptClass, setScriptClass] = useState('')
-  const [browser, setBrowser] = useState('chrome')
-  const [instances, setInstances] = useState(1)
+  const [scriptClass, setScriptClass] = useState(searchParams.get('scriptClass') || '')
+  const [browser, setBrowser] = useState(searchParams.get('browser') || 'chrome')
+  const [instances, setInstances] = useState(Number(searchParams.get('instances')) || 1)
   const [version, setVersion] = useState('')
-  const [headless, setHeadless] = useState(false)
-  const [loops, setLoops] = useState(1)
-  const [rampUpSeconds, setRampUpSeconds] = useState(0)
+  const [headless, setHeadless] = useState(searchParams.get('headless') === '1')
+  const [loops, setLoops] = useState(Number(searchParams.get('loops')) || 1)
+  const [rampUpSeconds, setRampUpSeconds] = useState(Number(searchParams.get('rampUpSeconds')) || 0)
   const [gridStatus, setGridStatus] = useState<{ status: string; url: string }>({ status: 'UNKNOWN', url: '' })
   const [launching, setLaunching] = useState(false)
   const [error, setError] = useState('')
   const [recentTests, setRecentTests] = useState<SeleniumTestRun[]>([])
 
   useEffect(() => {
-    fetchSeleniumClasses().then(setClasses).catch(() => {})
+    fetchSeleniumClasses().then(c => {
+      setClasses(c)
+      const fromParams = searchParams.get('scriptClass')
+      if (fromParams && c.includes(fromParams)) setScriptClass(fromParams)
+    }).catch(() => {})
     fetchGridStatus().then(setGridStatus).catch(() => {})
     fetchSeleniumTests({ page: 0, size: 5 }).then(p => setRecentTests(p.content)).catch(() => {})
   }, [])
@@ -64,7 +69,7 @@ export default function SeleniumDashboardPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
           <div>
-            <label style={{ color: '#a0a0b8', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>
+            <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>
               Script Class
             </label>
             <select value={scriptClass} onChange={(e) => setScriptClass(e.target.value)}
@@ -75,7 +80,7 @@ export default function SeleniumDashboardPage() {
           </div>
 
           <div>
-            <label style={{ color: '#a0a0b8', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>
+            <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>
               Browser
             </label>
             <select value={browser} onChange={(e) => setBrowser(e.target.value)}
@@ -87,7 +92,7 @@ export default function SeleniumDashboardPage() {
           </div>
 
           <div>
-            <label style={{ color: '#a0a0b8', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>
+            <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>
               Instances (1-20)
             </label>
             <input type="number" min={1} max={20} value={instances}
@@ -96,7 +101,7 @@ export default function SeleniumDashboardPage() {
           </div>
 
           <div>
-            <label style={{ color: '#a0a0b8', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>
+            <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>
               Version (optional)
             </label>
             <input type="text" placeholder="v1.0" value={version}
@@ -105,7 +110,7 @@ export default function SeleniumDashboardPage() {
           </div>
 
           <div>
-            <label style={{ color: '#a0a0b8', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>
+            <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>
               Loops (1-100)
             </label>
             <input type="number" min={1} max={100} value={loops}
@@ -114,7 +119,7 @@ export default function SeleniumDashboardPage() {
           </div>
 
           <div>
-            <label style={{ color: '#a0a0b8', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>
+            <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>
               Ramp-up (0-600s)
             </label>
             <input type="number" min={0} max={600} value={rampUpSeconds}
@@ -131,7 +136,7 @@ export default function SeleniumDashboardPage() {
         <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <input type="checkbox" id="headless" checked={headless}
             onChange={(e) => setHeadless(e.target.checked)} />
-          <label htmlFor="headless" style={{ color: '#a0a0b8', fontSize: '0.85rem', cursor: 'pointer' }}>
+          <label htmlFor="headless" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>
             Mode headless (navigateur invisible)
           </label>
         </div>
@@ -142,7 +147,7 @@ export default function SeleniumDashboardPage() {
               width: '10px', height: '10px', borderRadius: '50%',
               background: statusColor, display: 'inline-block',
             }} />
-            <span style={{ color: '#a0a0b8', fontSize: '0.85rem' }}>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
               Drivers: {gridStatus.status}
             </span>
           </div>

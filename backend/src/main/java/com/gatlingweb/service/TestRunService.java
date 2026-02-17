@@ -219,6 +219,13 @@ public class TestRunService {
         });
     }
 
+    public void updateNotes(Long id, String notes) {
+        repository.findById(id).ifPresent(run -> {
+            run.setNotes(notes);
+            repository.save(run);
+        });
+    }
+
     public void updateLabels(Long id, List<String> labels) {
         repository.findById(id).ifPresent(run -> {
             String joined = labels.stream()

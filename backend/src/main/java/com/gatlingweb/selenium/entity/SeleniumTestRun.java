@@ -32,6 +32,8 @@ public class SeleniumTestRun {
     private int passedIterations = 0;
     private int failedIterations = 0;
     private Double meanStepDuration;
+    private String notes;
+    private boolean headless;
 
     public SeleniumTestRun() {}
 
@@ -91,4 +93,10 @@ public class SeleniumTestRun {
 
     public Double getMeanStepDuration() { return meanStepDuration; }
     public void setMeanStepDuration(Double meanStepDuration) { this.meanStepDuration = meanStepDuration; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+
+    public boolean isHeadless() { return headless; }
+    public void setHeadless(boolean headless) { this.headless = headless; }
 }

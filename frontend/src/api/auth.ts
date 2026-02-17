@@ -20,13 +20,15 @@ export function getAuthHeaders(): Record<string, string> {
   return {}
 }
 
-export async function checkAuth(): Promise<boolean> {
+export async function checkAuth(): Promise<{ authenticated: boolean; appVersion?: string }> {
   const headers = getAuthHeaders()
-  if (!headers['Authorization']) return false
+  if (!headers['Authorization']) return { authenticated: false }
   try {
     const res = await fetch('/api/auth/check', { headers })
-    return res.ok
+    if (!res.ok) return { authenticated: false }
+    const data = await res.json()
+    return { authenticated: true, appVersion: data.appVersion }
   } catch {
-    return false
+    return { authenticated: false }
   }
 }

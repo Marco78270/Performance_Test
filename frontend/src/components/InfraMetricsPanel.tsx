@@ -129,12 +129,12 @@ export default function InfraMetricsPanel({ metrics, connected }: InfraMetricsPa
     return map
   }, [metrics])
 
-  const tooltipStyle = { background: '#16213e', border: '1px solid #0f3460' }
+  const tooltipStyle = { background: 'var(--tooltip-bg)', border: '1px solid var(--border-color)' }
 
   if (servers.length === 0) {
     return (
       <div className="card">
-        <p style={{ color: '#a0a0b8' }}>
+        <p style={{ color: 'var(--text-secondary)' }}>
           No infrastructure metrics available. Configure servers in the Servers page to start monitoring.
         </p>
         <span className={`connection-indicator ${connected ? 'connected' : 'disconnected'}`} style={{ marginTop: '0.5rem' }}>
@@ -150,7 +150,7 @@ export default function InfraMetricsPanel({ metrics, connected }: InfraMetricsPa
         <span className={`connection-indicator ${connected ? 'connected' : 'disconnected'}`}>
           {connected ? 'Live' : 'Disconnected'}
         </span>
-        <span style={{ color: '#a0a0b8', fontSize: '0.85rem' }}>
+        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
           Monitoring {servers.length} server{servers.length > 1 ? 's' : ''}
         </span>
       </div>
@@ -161,13 +161,13 @@ export default function InfraMetricsPanel({ metrics, connected }: InfraMetricsPa
           return (
             <div key={server.id} className="card" style={{ flex: '1 1 200px', minWidth: '200px' }}>
               <div className="flex-row" style={{ marginBottom: '0.5rem' }}>
-                <span style={{ fontWeight: 600, color: '#fff' }}>{server.name}</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{server.name}</span>
                 <span className={`status-badge status-${server.type}`}>{server.type}</span>
               </div>
               {last?.error ? (
                 <div style={{ color: '#e94560', fontSize: '0.85rem' }}>{last.error}</div>
               ) : (
-                <div style={{ fontSize: '0.85rem', color: '#a0a0b8' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                   <div>CPU: {last?.cpuPercent != null ? `${last.cpuPercent.toFixed(1)}%` : '-'}</div>
                   <div>Memory: {last?.memoryPercent != null ? `${last.memoryPercent.toFixed(1)}%` : '-'} ({formatBytes(last?.memoryUsedBytes ?? null)} / {formatBytes(last?.memoryTotalBytes ?? null)})</div>
                   <div>Disk R/W: {formatBytesPerSec(last?.diskReadBytesPerSec ?? null)} / {formatBytesPerSec(last?.diskWriteBytesPerSec ?? null)}</div>
@@ -185,9 +185,9 @@ export default function InfraMetricsPanel({ metrics, connected }: InfraMetricsPa
           <h3 style={{ marginBottom: '0.5rem' }}>CPU Usage (%)</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={cpuChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-              <XAxis dataKey="time" stroke="#a0a0b8" tickFormatter={formatTime} />
-              <YAxis stroke="#a0a0b8" domain={[0, 100]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+              <YAxis stroke="var(--text-secondary)" domain={[0, 100]} />
               <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${(Number(value) || 0).toFixed(1)}%`, '']} />
               <Legend />
               {servers.map((server) => (
@@ -209,9 +209,9 @@ export default function InfraMetricsPanel({ metrics, connected }: InfraMetricsPa
           <h3 style={{ marginBottom: '0.5rem' }}>Memory Usage (%)</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={memoryChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-              <XAxis dataKey="time" stroke="#a0a0b8" tickFormatter={formatTime} />
-              <YAxis stroke="#a0a0b8" domain={[0, 100]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+              <YAxis stroke="var(--text-secondary)" domain={[0, 100]} />
               <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${(Number(value) || 0).toFixed(1)}%`, '']} />
               <Legend />
               {servers.map((server) => (
@@ -233,9 +233,9 @@ export default function InfraMetricsPanel({ metrics, connected }: InfraMetricsPa
           <h3 style={{ marginBottom: '0.5rem' }}>Disk I/O (MB/s)</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={diskChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-              <XAxis dataKey="time" stroke="#a0a0b8" tickFormatter={formatTime} />
-              <YAxis stroke="#a0a0b8" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+              <YAxis stroke="var(--text-secondary)" />
               <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${(Number(value) || 0).toFixed(2)} MB/s`, '']} />
               <Legend />
               {servers.map((server) => (
@@ -269,9 +269,9 @@ export default function InfraMetricsPanel({ metrics, connected }: InfraMetricsPa
           <h3 style={{ marginBottom: '0.5rem' }}>Network I/O (MB/s)</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={networkChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#0f3460" />
-              <XAxis dataKey="time" stroke="#a0a0b8" tickFormatter={formatTime} />
-              <YAxis stroke="#a0a0b8" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+              <YAxis stroke="var(--text-secondary)" />
               <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${(Number(value) || 0).toFixed(2)} MB/s`, '']} />
               <Legend />
               {servers.map((server) => (

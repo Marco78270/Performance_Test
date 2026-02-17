@@ -1,25 +1,28 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { fetchSimulationClasses } from '../api/simulationApi'
 import { launchTest, fetchRunningTest, fetchQueue, cancelQueuedTest, fetchSummary, type TestRun, type DashboardSummary } from '../api/testRunApi'
 import { useQueueWebSocket } from '../hooks/useWebSocket'
 
 export default function DashboardPage() {
+  const [searchParams] = useSearchParams()
   const [classes, setClasses] = useState<string[]>([])
-  const [selected, setSelected] = useState('')
+  const [selected, setSelected] = useState(searchParams.get('simulationClass') || '')
   const [version, setVersion] = useState('')
-  const [usersInput, setUsersInput] = useState('5')
-  const [rampUp, setRampUp] = useState(true)
-  const [rampUpDurationInput, setRampUpDurationInput] = useState('10')
-  const [durationInput, setDurationInput] = useState('20')
-  const [loop, setLoop] = useState(true)
+  const [usersInput, setUsersInput] = useState(searchParams.get('users') || '5')
+  const [rampUp, setRampUp] = useState(searchParams.get('rampUp') !== 'false')
+  const [rampUpDurationInput, setRampUpDurationInput] = useState(searchParams.get('rampUpDuration') || '10')
+  const [durationInput, setDurationInput] = useState(searchParams.get('duration') || '20')
+  const [loop, setLoop] = useState(searchParams.get('loop') !== 'false')
 
   // Derived numeric values
   const users = parseInt(usersInput) || 1
   const rampUpDuration = parseInt(rampUpDurationInput) || 1
   const duration = parseInt(durationInput) || 1
-  const [bandwidthLimitMbps, setBandwidthLimitMbps] = useState<number | undefined>(undefined)
+  const [bandwidthLimitMbps, setBandwidthLimitMbps] = useState<number | undefined>(
+    searchParams.get('bandwidthLimitMbps') ? Number(searchParams.get('bandwidthLimitMbps')) : undefined
+  )
   const [running, setRunning] = useState<TestRun | null>(null)
   const [queuedTests, setQueuedTests] = useState<TestRun[]>([])
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
@@ -34,7 +37,9 @@ export default function DashboardPage() {
     Promise.all([
       fetchSimulationClasses().then((c) => {
         setClasses(c)
-        if (c.length > 0) setSelected(c[0])
+        const fromParams = searchParams.get('simulationClass')
+        if (fromParams && c.includes(fromParams)) setSelected(fromParams)
+        else if (c.length > 0 && !selected) setSelected(c[0])
       }),
       fetchRunningTest().then(setRunning),
       fetchQueue().then(setQueuedTests),
@@ -103,24 +108,24 @@ export default function DashboardPage() {
       {summary && (
         <div className="flex-row-wrap" style={{ marginBottom: '1rem' }}>
           <div className="card" style={{ flex: 1, textAlign: 'center', minWidth: '140px' }}>
-            <div style={{ color: '#a0a0b8', fontSize: '0.8rem' }}>Tests (24h)</div>
-            <div style={{ fontSize: '1.5rem', color: '#fff' }}>{summary.tests24h}</div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Tests (24h)</div>
+            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{summary.tests24h}</div>
           </div>
           <div className="card" style={{ flex: 1, textAlign: 'center', minWidth: '140px' }}>
-            <div style={{ color: '#a0a0b8', fontSize: '0.8rem' }}>Success Rate (24h)</div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Success Rate (24h)</div>
             <div style={{ fontSize: '1.5rem', color: summary.successRate24h >= 80 ? '#27ae60' : '#e94560' }}>
               {summary.successRate24h}%
             </div>
           </div>
           <div className="card" style={{ flex: 1, textAlign: 'center', minWidth: '140px' }}>
-            <div style={{ color: '#a0a0b8', fontSize: '0.8rem' }}>Avg RT (24h)</div>
-            <div style={{ fontSize: '1.5rem', color: '#fff' }}>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Avg RT (24h)</div>
+            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>
               {summary.avgResponseTime24h != null ? `${summary.avgResponseTime24h} ms` : '-'}
             </div>
           </div>
           <div className="card" style={{ flex: 1, textAlign: 'center', minWidth: '140px' }}>
-            <div style={{ color: '#a0a0b8', fontSize: '0.8rem' }}>Total Tests</div>
-            <div style={{ fontSize: '1.5rem', color: '#fff' }}>{summary.totalTests}</div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Total Tests</div>
+            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{summary.totalTests}</div>
           </div>
         </div>
       )}
@@ -298,18 +303,18 @@ function InjectionProfileChart({ users, rampUp, rampUpDuration, duration, loop }
       <h4 style={{ marginBottom: '0.4rem' }}>Injection profile</h4>
       <ResponsiveContainer width="100%" height={180}>
         <AreaChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
           <XAxis
             dataKey="time"
             type="number"
             domain={[0, totalTime]}
             tickFormatter={(v) => `${v}s`}
-            stroke="#888"
+            stroke="var(--text-secondary)"
           />
           <YAxis
             domain={[0, (max: number) => Math.ceil(max * 1.2) || 1]}
-            stroke="#888"
-            label={{ value: 'users/s', angle: -90, position: 'insideLeft', style: { fill: '#888' } }}
+            stroke="var(--text-secondary)"
+            label={{ value: 'users/s', angle: -90, position: 'insideLeft', style: { fill: 'var(--text-secondary)' } }}
           />
           <Tooltip
             formatter={(value: number | undefined) => [value != null ? value.toFixed(1) : '0', 'users/s']}

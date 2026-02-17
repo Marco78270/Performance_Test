@@ -28,6 +28,8 @@ export interface TestRun {
   thresholdProfileId: number | null
   thresholdDetails: ThresholdEvaluationResult[] | null
   bandwidthLimitMbps: number | null
+  notes: string | null
+  launchParams: string | null
 }
 
 export interface Page<T> {
@@ -111,6 +113,15 @@ export async function fetchRunningTest(): Promise<TestRun | null> {
   if (res.status === 404) return null
   if (!res.ok) throw new Error('Failed to fetch running test')
   return res.json()
+}
+
+export async function updateTestNotes(id: number, notes: string): Promise<void> {
+  const res = await authFetch(`/api/tests/${id}/notes`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notes }),
+  })
+  if (!res.ok) throw new Error('Failed to update notes')
 }
 
 export async function updateTestLabels(id: number, labels: string[]): Promise<void> {

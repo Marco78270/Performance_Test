@@ -17,15 +17,19 @@ import SeleniumHistoryPage from './pages/SeleniumHistoryPage'
 import SeleniumMonitorPage from './pages/SeleniumMonitorPage'
 import SeleniumConfigPage from './pages/SeleniumConfigPage'
 import { checkAuth, clearCredentials } from './api/auth'
+import { useTheme } from './hooks/useTheme'
 import './App.css'
 
 function App() {
   const [authenticated, setAuthenticated] = useState(false)
   const [checking, setChecking] = useState(true)
+  const [appVersion, setAppVersion] = useState('')
+  const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
-    checkAuth().then(ok => {
-      setAuthenticated(ok)
+    checkAuth().then(result => {
+      setAuthenticated(result.authenticated)
+      if (result.appVersion) setAppVersion(result.appVersion)
       setChecking(false)
     })
   }, [])
@@ -67,7 +71,13 @@ function App() {
           <NavLink to="/selenium/editor">Selenium Editor</NavLink>
           <NavLink to="/selenium/history">Selenium History</NavLink>
           <NavLink to="/selenium/config">Configuration</NavLink>
-          <button className="logout-btn" onClick={handleLogout}>Logout</button>
+          <div className="sidebar-footer">
+            {appVersion && <span className="app-version">v{appVersion}</span>}
+            <button className="theme-toggle-btn" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19'}
+            </button>
+            <button className="logout-btn" onClick={handleLogout}>Logout</button>
+          </div>
         </nav>
         <main className="main-content">
           <ErrorBoundary>

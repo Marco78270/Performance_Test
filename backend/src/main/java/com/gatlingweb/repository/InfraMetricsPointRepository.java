@@ -7,6 +7,5 @@ import java.util.List;
 
 public interface InfraMetricsPointRepository extends JpaRepository<InfraMetricsPoint, Long> {
     List<InfraMetricsPoint> findByTestRunIdOrderByTimestampAsc(Long testRunId);
-    List<InfraMetricsPoint> findByTestRunIdAndServerIdOrderByTimestampAsc(Long testRunId, Long serverId);
     void deleteByTestRunId(Long testRunId);
 }

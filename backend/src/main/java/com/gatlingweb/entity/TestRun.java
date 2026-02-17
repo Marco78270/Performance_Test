@@ -38,6 +38,7 @@ public class TestRun {
     private String thresholdDetails;
     private String launchParams;
     private Integer bandwidthLimitMbps;
+    private String notes;
 
     public TestRun() {}
 
@@ -100,4 +101,7 @@ public class TestRun {
 
     public Integer getBandwidthLimitMbps() { return bandwidthLimitMbps; }
     public void setBandwidthLimitMbps(Integer bandwidthLimitMbps) { this.bandwidthLimitMbps = bandwidthLimitMbps; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
 }
