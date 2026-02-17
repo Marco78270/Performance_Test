@@ -83,6 +83,7 @@
     </dependencies>
 
     <build>
+        <finalName>gatling-web</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

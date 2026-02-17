@@ -25,9 +25,13 @@ public class TestRun {
     private Long totalRequests;
     private Long totalErrors;
     private Double meanResponseTime;
+    @Column(name = "p50_response_time")
     private Double p50ResponseTime;
+    @Column(name = "p75_response_time")
     private Double p75ResponseTime;
+    @Column(name = "p95_response_time")
     private Double p95ResponseTime;
+    @Column(name = "p99_response_time")
     private Double p99ResponseTime;
 
     private String labels = "";
