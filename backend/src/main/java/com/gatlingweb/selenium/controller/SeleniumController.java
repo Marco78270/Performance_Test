@@ -4,6 +4,7 @@ import com.gatlingweb.dto.InfraMetricsSnapshot;
 import com.gatlingweb.dto.SimulationFileDto;
 import com.gatlingweb.dto.SimulationTemplateDto;
 import com.gatlingweb.entity.TestStatus;
+import com.gatlingweb.selenium.dto.SeleniumComparisonDto;
 import com.gatlingweb.selenium.dto.SeleniumLaunchRequest;
 import com.gatlingweb.selenium.dto.SeleniumMetricsSnapshot;
 import com.gatlingweb.selenium.entity.AppSetting;
@@ -23,6 +24,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -44,6 +46,7 @@ public class SeleniumController {
     private final AppSettingRepository appSettingRepository;
     private final MetricsPersistenceService metricsPersistenceService;
     private final SeleniumPdfExportService pdfExportService;
+    private final SikuliImageService sikuliImageService;
 
     public SeleniumController(
             SeleniumFileService fileService,
@@ -56,7 +59,8 @@ public class SeleniumController {
             SeleniumBrowserResultRepository resultRepository,
             AppSettingRepository appSettingRepository,
             MetricsPersistenceService metricsPersistenceService,
-            SeleniumPdfExportService pdfExportService) {
+            SeleniumPdfExportService pdfExportService,
+            SikuliImageService sikuliImageService) {
         this.fileService = fileService;
         this.templateService = templateService;
         this.executionService = executionService;
@@ -68,6 +72,7 @@ public class SeleniumController {
         this.appSettingRepository = appSettingRepository;
         this.metricsPersistenceService = metricsPersistenceService;
         this.pdfExportService = pdfExportService;
+        this.sikuliImageService = sikuliImageService;
     }
 
     // --- File management ---
@@ -286,6 +291,87 @@ public class SeleniumController {
             .toList();
     }
 
+    // --- Comparison ---
+
+    @GetMapping("/compare")
+    public ResponseEntity<?> compare(@RequestParam String ids) {
+        String[] parts = ids.split(",");
+        if (parts.length != 2) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Exactly 2 ids required"));
+        }
+        Long idA = Long.parseLong(parts[0].trim());
+        Long idB = Long.parseLong(parts[1].trim());
+
+        SeleniumTestRun testA = testRunRepository.findById(idA)
+                .orElseThrow(() -> new IllegalArgumentException("Test not found: " + idA));
+        SeleniumTestRun testB = testRunRepository.findById(idB)
+                .orElseThrow(() -> new IllegalArgumentException("Test not found: " + idB));
+
+        List<SeleniumMetricsSnapshot> metricsA = metricsCollector.getMetrics(idA);
+        List<SeleniumMetricsSnapshot> metricsB = metricsCollector.getMetrics(idB);
+
+        Map<String, Double> aggA = aggregateMetrics(testA, metricsA);
+        Map<String, Double> aggB = aggregateMetrics(testB, metricsB);
+
+        Map<String, Double> diffPercent = new java.util.LinkedHashMap<>();
+        for (String key : aggA.keySet()) {
+            Double valA = aggA.get(key);
+            Double valB = aggB.get(key);
+            if (valA != null && valB != null && valA != 0) {
+                diffPercent.put(key, ((valB - valA) / Math.abs(valA)) * 100.0);
+            } else {
+                diffPercent.put(key, null);
+            }
+        }
+
+        return ResponseEntity.ok(new SeleniumComparisonDto(testA, testB, diffPercent, aggA, aggB));
+    }
+
+    @GetMapping("/compare/export/pdf")
+    public ResponseEntity<byte[]> compareExportPdf(@RequestParam String ids) {
+        String[] parts = ids.split(",");
+        Long idA = Long.parseLong(parts[0].trim());
+        Long idB = Long.parseLong(parts[1].trim());
+        byte[] pdf = pdfExportService.generateComparisonPdf(idA, idB);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=selenium-compare-" + idA + "-vs-" + idB + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
+
+    private Map<String, Double> aggregateMetrics(SeleniumTestRun run, List<SeleniumMetricsSnapshot> metrics) {
+        Map<String, Double> agg = new java.util.LinkedHashMap<>();
+        agg.put("meanStepDuration", run.getMeanStepDuration());
+
+        if (!metrics.isEmpty()) {
+            List<Double> p50Vals = metrics.stream().map(SeleniumMetricsSnapshot::p50).filter(v -> v > 0).toList();
+            List<Double> p75Vals = metrics.stream().map(SeleniumMetricsSnapshot::p75).filter(v -> v > 0).toList();
+            List<Double> p95Vals = metrics.stream().map(SeleniumMetricsSnapshot::p95).filter(v -> v > 0).toList();
+            List<Double> p99Vals = metrics.stream().map(SeleniumMetricsSnapshot::p99).filter(v -> v > 0).toList();
+
+            agg.put("p50", p50Vals.isEmpty() ? null : p50Vals.stream().mapToDouble(Double::doubleValue).average().orElse(0));
+            agg.put("p75", p75Vals.isEmpty() ? null : p75Vals.stream().mapToDouble(Double::doubleValue).average().orElse(0));
+            agg.put("p95", p95Vals.isEmpty() ? null : p95Vals.stream().mapToDouble(Double::doubleValue).average().orElse(0));
+            agg.put("p99", p99Vals.isEmpty() ? null : p99Vals.stream().mapToDouble(Double::doubleValue).average().orElse(0));
+        } else {
+            agg.put("p50", null);
+            agg.put("p75", null);
+            agg.put("p95", null);
+            agg.put("p99", null);
+        }
+
+        int total = run.getTotalIterations();
+        int failed = run.getFailedIterations();
+        agg.put("totalIterations", (double) total);
+        agg.put("passedIterations", (double) run.getPassedIterations());
+        agg.put("failedIterations", (double) failed);
+        agg.put("errorRate", total > 0 ? ((double) failed / total) * 100.0 : 0.0);
+        agg.put("passedInstances", (double) run.getPassedInstances());
+        agg.put("failedInstances", (double) run.getFailedInstances());
+
+        return agg;
+    }
+
     // --- Grid status ---
 
     @GetMapping("/grid/status")
@@ -306,16 +392,66 @@ public class SeleniumController {
         return ResponseEntity.ok(Map.of("chrome", chrome, "firefox", firefox, "edge", edge));
     }
 
+    // --- SikuliLite Images ---
+
+    @GetMapping("/sikuli/images")
+    public ResponseEntity<?> listSikuliImages() throws IOException {
+        return ResponseEntity.ok(sikuliImageService.listImages());
+    }
+
+    @PostMapping("/sikuli/images")
+    public ResponseEntity<?> uploadSikuliImage(@RequestParam("file") MultipartFile file) {
+        try {
+            sikuliImageService.upload(file);
+            return ResponseEntity.ok(Map.of("status", "uploaded"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Upload failed"));
+        }
+    }
+
+    @DeleteMapping("/sikuli/images")
+    public ResponseEntity<?> deleteSikuliImage(@RequestParam String name) throws IOException {
+        sikuliImageService.delete(name);
+        return ResponseEntity.ok(Map.of("status", "deleted"));
+    }
+
+    @GetMapping("/sikuli/images/{name}")
+    public ResponseEntity<byte[]> getSikuliImage(@PathVariable String name) throws IOException {
+        byte[] data = sikuliImageService.getBytes(name);
+        String lower = name.toLowerCase();
+        MediaType mediaType = lower.endsWith(".png") ? MediaType.IMAGE_PNG : MediaType.IMAGE_JPEG;
+        return ResponseEntity.ok().contentType(mediaType).body(data);
+    }
+
     @PutMapping("/config/drivers")
     @Transactional
     public ResponseEntity<?> saveDriverConfig(@RequestBody Map<String, String> body) {
-        String chrome = body.getOrDefault("chrome", "");
-        String firefox = body.getOrDefault("firefox", "");
-        String edge = body.getOrDefault("edge", "");
+        String chrome = body.getOrDefault("chrome", "").trim();
+        String firefox = body.getOrDefault("firefox", "").trim();
+        String edge = body.getOrDefault("edge", "").trim();
+
+        // Validate paths exist before saving
+        List<String> warnings = new java.util.ArrayList<>();
+        if (!chrome.isBlank() && !new java.io.File(chrome).isFile()) {
+            warnings.add("Chrome driver not found: " + chrome);
+        }
+        if (!firefox.isBlank() && !new java.io.File(firefox).isFile()) {
+            warnings.add("Firefox driver not found: " + firefox);
+        }
+        if (!edge.isBlank() && !new java.io.File(edge).isFile()) {
+            warnings.add("Edge driver not found: " + edge);
+        }
+
         appSettingRepository.save(new AppSetting("driver.chrome.path", chrome));
         appSettingRepository.save(new AppSetting("driver.firefox.path", firefox));
         appSettingRepository.save(new AppSetting("driver.edge.path", edge));
         gridService.invalidateDriverCache();
+
+        if (!warnings.isEmpty()) {
+            return ResponseEntity.ok(Map.of("status", "saved", "warnings", warnings));
+        }
         return ResponseEntity.ok(Map.of("status", "saved"));
     }
 }

@@ -23,9 +23,11 @@ import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileReader;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
@@ -49,6 +51,8 @@ public class SeleniumExecutionService {
     private final SimpMessagingTemplate messaging;
     private final ObjectMapper objectMapper;
     private final Path screenshotsDir;
+    private final Path sikuliImagesDir;
+    private final Path seleniumWorkspace;
 
     private volatile Long currentTestRunId;
     private volatile boolean cancelled = false;
@@ -63,7 +67,8 @@ public class SeleniumExecutionService {
             InfraMetricsScraperService infraScraper,
             SimpMessagingTemplate messaging,
             ObjectMapper objectMapper,
-            @Value("${selenium.screenshots-dir:../selenium-workspace/screenshots}") String screenshotsDir) {
+            @Value("${selenium.screenshots-dir:../selenium-workspace/screenshots}") String screenshotsDir,
+            @Value("${selenium.workspace:../selenium-workspace}") String seleniumWorkspace) {
         this.testRunRepository = testRunRepository;
         this.resultRepository = resultRepository;
         this.gridService = gridService;
@@ -73,6 +78,8 @@ public class SeleniumExecutionService {
         this.messaging = messaging;
         this.objectMapper = objectMapper;
         this.screenshotsDir = Path.of(screenshotsDir).toAbsolutePath().normalize();
+        this.seleniumWorkspace = Path.of(seleniumWorkspace).toAbsolutePath().normalize();
+        this.sikuliImagesDir = this.seleniumWorkspace.resolve("sikuli-images");
     }
 
     public SeleniumTestRun launch(SeleniumLaunchRequest request) {
@@ -124,10 +131,22 @@ public class SeleniumExecutionService {
                 return;
             }
 
-            // 3. Load class
+            // 3. Load class (include dependency JARs for SikuliLite/OpenCV)
             Path classesDir = compilerService.getClassesDir();
+            List<URL> urls = new ArrayList<>();
+            urls.add(classesDir.toUri().toURL());
+            Path depDir = seleniumWorkspace.resolve("target/dependency");
+            if (Files.isDirectory(depDir)) {
+                try (var jars = Files.list(depDir)) {
+                    jars.filter(p -> p.toString().endsWith(".jar"))
+                        .forEach(p -> {
+                            try { urls.add(p.toUri().toURL()); }
+                            catch (Exception ignored) {}
+                        });
+                }
+            }
             URLClassLoader classLoader = new URLClassLoader(
-                new URL[]{classesDir.toUri().toURL()},
+                urls.toArray(new URL[0]),
                 getClass().getClassLoader()
             );
 
@@ -135,6 +154,12 @@ public class SeleniumExecutionService {
             final String browserName = run.getBrowser();
             final int loops = run.getLoops();
             final int rampUpSeconds = run.getRampUpSeconds();
+
+            // 3b. Load CSV data if available
+            final List<Map<String, String>> csvRows = loadCsvData(run.getScriptClass());
+            if (!csvRows.isEmpty()) {
+                log.info("Loaded {} CSV rows for script {}", csvRows.size(), run.getScriptClass());
+            }
 
             // 4. Start metrics collector + infra scraper
             metricsCollector.start(testRunId);
@@ -170,7 +195,7 @@ public class SeleniumExecutionService {
                             try {
                                 if (cancelled) return;
                                 boolean allPassed = executeSingleBrowser(testRunId, browserName,
-                                    scriptClazz, browserIndex, loops, passedIterations, failedIterations);
+                                    scriptClazz, classLoader, browserIndex, loops, csvRows, passedIterations, failedIterations);
                                 if (allPassed) passedInstances.incrementAndGet();
                                 else failedInstances.incrementAndGet();
                             } finally {
@@ -189,7 +214,7 @@ public class SeleniumExecutionService {
                         try {
                             if (cancelled) return;
                             boolean allPassed = executeSingleBrowser(testRunId, browserName,
-                                scriptClazz, browserIndex, loops, passedIterations, failedIterations);
+                                scriptClazz, classLoader, browserIndex, loops, csvRows, passedIterations, failedIterations);
                             if (allPassed) passedInstances.incrementAndGet();
                             else failedInstances.incrementAndGet();
                         } finally {
@@ -240,7 +265,8 @@ public class SeleniumExecutionService {
      * Returns true if ALL iterations passed, false if any failed.
      */
     private boolean executeSingleBrowser(Long testRunId, String browser, Class<?> scriptClazz,
-                                          int browserIndex, int loops,
+                                          URLClassLoader classLoader, int browserIndex, int loops,
+                                          List<Map<String, String>> csvRows,
                                           AtomicInteger passedIterations, AtomicInteger failedIterations) {
 
         metricsCollector.browserStarted();
@@ -289,6 +315,28 @@ public class SeleniumExecutionService {
                     Object scriptInstance = scriptClazz.getDeclaredConstructor().newInstance();
                     var setDriverMethod = scriptClazz.getMethod("setDriver", WebDriver.class);
                     setDriverMethod.invoke(scriptInstance, driverRef);
+
+                    // Inject browserIndex, iteration and CSV row
+                    scriptClazz.getMethod("setBrowserIndex", int.class).invoke(scriptInstance, browserIndex);
+                    scriptClazz.getMethod("setIteration", int.class).invoke(scriptInstance, iteration);
+                    if (!csvRows.isEmpty()) {
+                        Map<String, String> row = csvRows.get((browserIndex * loops + iteration) % csvRows.size());
+                        scriptClazz.getMethod("setCsvRow", Map.class).invoke(scriptInstance, row);
+                    }
+
+                    // Inject SikuliLite if available
+                    try {
+                        Class<?> sikuliClass = classLoader.loadClass("scripts.SikuliLite");
+                        Object sikuliInstance = sikuliClass
+                            .getConstructor(WebDriver.class, Path.class)
+                            .newInstance(driverRef, sikuliImagesDir);
+                        var setSikuliMethod = scriptClazz.getMethod("setSikuli", sikuliClass);
+                        setSikuliMethod.invoke(scriptInstance, sikuliInstance);
+                    } catch (ClassNotFoundException e) {
+                        log.debug("SikuliLite class not found, skipping injection");
+                    } catch (Exception e) {
+                        log.warn("Failed to inject SikuliLite: {}", e.getMessage());
+                    }
 
                     try {
                         var executeMethod = scriptClazz.getMethod("execute");
@@ -407,6 +455,32 @@ public class SeleniumExecutionService {
         } catch (Exception e) {
             log.warn("Failed to send browser update for test {}", testRunId, e);
         }
+    }
+
+    private List<Map<String, String>> loadCsvData(String scriptClass) {
+        Path csvPath = seleniumWorkspace.resolve("data").resolve(scriptClass + ".csv");
+        if (!Files.exists(csvPath)) {
+            return List.of();
+        }
+        List<Map<String, String>> rows = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(csvPath.toFile()))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null) return List.of();
+            String[] headers = headerLine.split(",", -1);
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isBlank()) continue;
+                String[] values = line.split(",", -1);
+                Map<String, String> row = new LinkedHashMap<>();
+                for (int i = 0; i < headers.length; i++) {
+                    row.put(headers[i].trim(), i < values.length ? values[i].trim() : "");
+                }
+                rows.add(row);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to load CSV data for {}: {}", scriptClass, e.getMessage());
+        }
+        return rows;
     }
 
     public void cancel(Long testRunId) {

@@ -16,6 +16,7 @@ import SeleniumEditorPage from './pages/SeleniumEditorPage'
 import SeleniumHistoryPage from './pages/SeleniumHistoryPage'
 import SeleniumMonitorPage from './pages/SeleniumMonitorPage'
 import SeleniumConfigPage from './pages/SeleniumConfigPage'
+import SeleniumComparePage from './pages/SeleniumComparePage'
 import { checkAuth, clearCredentials } from './api/auth'
 import { useTheme } from './hooks/useTheme'
 import './App.css'
@@ -95,6 +96,7 @@ function App() {
               <Route path="/selenium/editor" element={<SeleniumEditorPage />} />
               <Route path="/selenium/history" element={<SeleniumHistoryPage />} />
               <Route path="/selenium/test/:id" element={<SeleniumMonitorPage />} />
+              <Route path="/selenium/compare" element={<SeleniumComparePage />} />
               <Route path="/selenium/config" element={<SeleniumConfigPage />} />
             </Routes>
           </ErrorBoundary>

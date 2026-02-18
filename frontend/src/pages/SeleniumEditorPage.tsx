@@ -7,7 +7,8 @@ import {
   fetchSeleniumFileTree, fetchSeleniumFileContent, saveSeleniumFile,
   createSeleniumFile, deleteSeleniumFile, renameSeleniumFile, createSeleniumDirectory,
   fetchSeleniumTemplates, fetchSeleniumTemplateContent, compileSeleniumScripts,
-  type SeleniumTemplate,
+  fetchSikuliImages, uploadSikuliImage, deleteSikuliImage, getSikuliImageUrl,
+  type SeleniumTemplate, type SikuliImage,
 } from '../api/seleniumApi'
 import { type SimulationFile } from '../api/simulationApi'
 
@@ -96,6 +97,13 @@ export default function SeleniumEditorPage() {
   // Compile
   const [compiling, setCompiling] = useState(false)
   const [compileOutput, setCompileOutput] = useState<{ success: boolean; output: string[] } | null>(null)
+
+  // SikuliLite Images
+  const [sikuliOpen, setSikuliOpen] = useState(false)
+  const [sikuliImages, setSikuliImages] = useState<SikuliImage[]>([])
+  const [sikuliLoading, setSikuliLoading] = useState(false)
+  const [sikuliUploading, setSikuliUploading] = useState(false)
+  const [sikuliDragOver, setSikuliDragOver] = useState(false)
 
   const loadTree = useCallback(async () => {
     setLoading(true)
@@ -205,6 +213,48 @@ export default function SeleniumEditorPage() {
     }
   }
 
+  // SikuliLite handlers
+  async function loadSikuliImages() {
+    setSikuliLoading(true)
+    try {
+      const imgs = await fetchSikuliImages()
+      setSikuliImages(imgs)
+    } catch {
+      setSikuliImages([])
+    } finally {
+      setSikuliLoading(false)
+    }
+  }
+
+  function handleSikuliToggle() {
+    const next = !sikuliOpen
+    setSikuliOpen(next)
+    if (next) loadSikuliImages()
+  }
+
+  async function handleSikuliUpload(files: FileList | null) {
+    if (!files || files.length === 0) return
+    setSikuliUploading(true)
+    try {
+      for (const file of Array.from(files)) {
+        await uploadSikuliImage(file)
+      }
+      await loadSikuliImages()
+    } finally {
+      setSikuliUploading(false)
+    }
+  }
+
+  async function handleSikuliDelete(name: string) {
+    if (!confirm(`Delete ${name}?`)) return
+    await deleteSikuliImage(name)
+    await loadSikuliImages()
+  }
+
+  function handleSikuliCopy(name: string) {
+    navigator.clipboard.writeText(name)
+  }
+
   const isBaseScript = selectedPath === 'BaseSeleniumScript.java'
 
   return (
@@ -240,6 +290,88 @@ export default function SeleniumEditorPage() {
             onCreateDir={(parentPath) => setNewDirModal({ parentPath, name: '' })}
           />
         )}
+
+        {/* SikuliLite Images Section */}
+        <div style={{ marginTop: '1rem', borderTop: '1px solid #0f3460', paddingTop: '0.5rem' }}>
+          <div
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#a0a0b8', fontSize: '0.85rem', fontWeight: 600 }}
+            onClick={handleSikuliToggle}
+          >
+            <span style={{ transform: sikuliOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block' }}>&#9654;</span>
+            SikuliLite Images
+          </div>
+
+          {sikuliOpen && (
+            <div style={{ marginTop: '0.4rem' }}>
+              {/* Drop zone + file picker */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setSikuliDragOver(true) }}
+                onDragLeave={() => setSikuliDragOver(false)}
+                onDrop={(e) => { e.preventDefault(); setSikuliDragOver(false); handleSikuliUpload(e.dataTransfer.files) }}
+                onClick={() => document.getElementById('sikuli-file-input')?.click()}
+                style={{
+                  border: `2px dashed ${sikuliDragOver ? '#e94560' : '#0f3460'}`,
+                  borderRadius: '4px',
+                  padding: '0.5rem',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  color: sikuliDragOver ? '#e94560' : '#a0a0b8',
+                  background: sikuliDragOver ? '#0f346020' : 'transparent',
+                  transition: 'all 0.2s',
+                  marginBottom: '0.4rem',
+                }}
+              >
+                {sikuliUploading ? 'Uploading...' : 'Drop PNG/JPG or click'}
+                <input
+                  id="sikuli-file-input"
+                  type="file"
+                  accept=".png,.jpg,.jpeg"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={(e) => handleSikuliUpload(e.target.files)}
+                />
+              </div>
+
+              {sikuliLoading ? (
+                <div style={{ fontSize: '0.75rem', color: '#a0a0b8' }}>Loading...</div>
+              ) : sikuliImages.length === 0 ? (
+                <div style={{ fontSize: '0.75rem', color: '#a0a0b8' }}>No images yet</div>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {sikuliImages.map((img) => (
+                    <li key={img.name} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0', fontSize: '0.75rem' }}>
+                      <img
+                        src={getSikuliImageUrl(img.name)}
+                        alt={img.name}
+                        style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: '2px', border: '1px solid #0f3460', flexShrink: 0 }}
+                      />
+                      <span style={{ flex: 1, color: '#e0e0e0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={img.name}>
+                        {img.name}
+                      </span>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.6rem', padding: '0.1rem 0.25rem' }}
+                        onClick={() => handleSikuliCopy(img.name)}
+                        title="Copy name"
+                      >
+                        CP
+                      </button>
+                      <button
+                        className="btn btn-danger"
+                        style={{ fontSize: '0.6rem', padding: '0.1rem 0.25rem' }}
+                        onClick={() => handleSikuliDelete(img.name)}
+                        title="Delete"
+                      >
+                        X
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div className="flex-row" style={{ marginBottom: '0.5rem' }}>

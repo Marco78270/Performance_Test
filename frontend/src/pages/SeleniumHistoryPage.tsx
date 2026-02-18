@@ -67,6 +67,7 @@ export default function SeleniumHistoryPage() {
   const [allLabels, setAllLabels] = useState<string[]>([])
   const [showLabelSuggestions, setShowLabelSuggestions] = useState(false)
   const [showAddLabelSuggestions, setShowAddLabelSuggestions] = useState(false)
+  const [compareSelection, setCompareSelection] = useState<number[]>([])
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set())
   const [folderData, setFolderData] = useState<SeleniumTestRun[]>([])
@@ -193,6 +194,14 @@ export default function SeleniumHistoryPage() {
     if (mode === 'list') setPageNum(0)
   }
 
+  function toggleCompare(id: number) {
+    setCompareSelection(prev => {
+      if (prev.includes(id)) return prev.filter(x => x !== id)
+      if (prev.length >= 2) return [prev[1], id]
+      return [...prev, id]
+    })
+  }
+
   async function handleCancel(id: number) {
     await cancelSeleniumTest(id)
     const updateContent = (runs: SeleniumTestRun[]) =>
@@ -222,6 +231,10 @@ export default function SeleniumHistoryPage() {
     const labels = parseLabels(run.labels)
     return (
       <tr key={run.id}>
+        <td>
+          <input type="checkbox" checked={compareSelection.includes(run.id)}
+            onChange={() => toggleCompare(run.id)} style={{ cursor: 'pointer' }} />
+        </td>
         <td>{run.scriptClass}</td>
         <td style={{ textTransform: 'capitalize' }}>{run.browser}</td>
         <td>{run.instances}{run.loops > 1 && <span style={{ color: 'var(--text-secondary)' }}> x{run.loops}</span>}</td>
@@ -346,6 +359,19 @@ export default function SeleniumHistoryPage() {
     <div>
       <div className="flex-row" style={{ marginBottom: '1rem' }}>
         <h2 style={{ margin: 0 }}>Selenium History</h2>
+        {compareSelection.length === 2 && (
+          <button className="btn btn-primary"
+            onClick={() => navigate(`/selenium/compare?ids=${compareSelection[0]},${compareSelection[1]}`)}>
+            Compare ({compareSelection.length})
+          </button>
+        )}
+        {compareSelection.length === 1 && (
+          <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Select 1 more to compare</span>
+        )}
+        {compareSelection.length > 0 && (
+          <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
+            onClick={() => setCompareSelection([])}>Clear</button>
+        )}
       </div>
 
       <div className="card" style={{ padding: '0.6rem 1.2rem', marginBottom: '0.5rem' }}>
@@ -427,6 +453,7 @@ export default function SeleniumHistoryPage() {
               <table>
                 <thead>
                   <tr>
+                    <th style={{ width: '30px' }}></th>
                     <SortHeader field="scriptClass">Script</SortHeader>
                     <th>Browser</th>
                     <th>Instances</th>
@@ -443,7 +470,7 @@ export default function SeleniumHistoryPage() {
                 <tbody>
                   {filteredContent.map((run) => renderTestRow(run, true))}
                   {filteredContent.length === 0 && (
-                    <tr><td colSpan={11} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No tests found</td></tr>
+                    <tr><td colSpan={12} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No tests found</td></tr>
                   )}
                 </tbody>
               </table>
@@ -525,6 +552,7 @@ export default function SeleniumHistoryPage() {
                         <table>
                           <thead>
                             <tr>
+                              <th style={{ width: '30px' }}></th>
                               <SortHeader field="scriptClass">Script</SortHeader>
                               <th>Browser</th>
                               <th>Instances</th>

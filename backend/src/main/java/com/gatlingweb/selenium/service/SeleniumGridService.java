@@ -54,12 +54,21 @@ public class SeleniumGridService {
                 ? settingRepository.findById(settingKey).map(s -> s.getValue()).orElse(null)
                 : null;
 
-            if (localPath != null && !localPath.isBlank() && new File(localPath).isFile()) {
-                String sysProp = SYSTEM_PROPERTY_KEYS.get(browser);
-                log.info("Using local {} driver: {}", browser, localPath);
-                System.setProperty(sysProp, localPath);
+            if (localPath != null && !localPath.isBlank()) {
+                localPath = localPath.trim();
+                File driverFile = new File(localPath);
+                if (driverFile.isFile()) {
+                    String sysProp = SYSTEM_PROPERTY_KEYS.get(browser);
+                    log.info("Using local {} driver: {}", browser, localPath);
+                    System.setProperty(sysProp, localPath);
+                } else {
+                    log.error("Configured {} driver path does NOT exist: '{}' (absolute: '{}')",
+                        browser, localPath, driverFile.getAbsolutePath());
+                    throw new RuntimeException("Driver file not found: " + localPath
+                        + " — check the path in Selenium Configuration");
+                }
             } else {
-                log.info("Setting up {} driver via WebDriverManager...", browser);
+                log.info("No local driver configured for {}, trying WebDriverManager (requires internet)...", browser);
                 switch (browser) {
                     case "chrome" -> WebDriverManager.chromedriver().setup();
                     case "firefox" -> WebDriverManager.firefoxdriver().setup();

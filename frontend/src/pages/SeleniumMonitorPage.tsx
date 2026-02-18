@@ -81,6 +81,83 @@ function downsample(data: ChartPoint[], maxPoints = 300): ChartPoint[] {
 
 type TabType = 'browsers' | 'metrics' | 'infra'
 
+const ZOOM_LEVELS = [1, 2, 3, 4]
+
+function ScreenshotLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+  const [zoomIndex, setZoomIndex] = useState(0)
+  const zoom = ZOOM_LEVELS[zoomIndex]
+  const isZoomed = zoom > 1
+
+  function cycleZoom() {
+    setZoomIndex(i => (i + 1) % ZOOM_LEVELS.length)
+  }
+
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) { isZoomed ? setZoomIndex(0) : onClose() } }}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.9)', zIndex: 9999,
+        overflow: isZoomed ? 'auto' : 'hidden',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      {/* Toolbar */}
+      <div style={{
+        position: 'fixed', top: '10px', right: '10px', zIndex: 10000,
+        display: 'flex', gap: '0.5rem', alignItems: 'center',
+      }}>
+        {ZOOM_LEVELS.map((level, i) => (
+          <button
+            key={level}
+            onClick={(e) => { e.stopPropagation(); setZoomIndex(i) }}
+            style={{
+              background: i === zoomIndex ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.12)',
+              border: i === zoomIndex ? '1px solid rgba(255,255,255,0.6)' : '1px solid rgba(255,255,255,0.25)',
+              color: '#fff', borderRadius: '6px', padding: '0.35rem 0.6rem', cursor: 'pointer',
+              fontSize: '0.8rem', backdropFilter: 'blur(4px)', fontWeight: i === zoomIndex ? 700 : 400,
+            }}
+          >
+            {level === 1 ? 'Fit' : `x${level}`}
+          </button>
+        ))}
+        <button
+          onClick={(e) => { e.stopPropagation(); onClose() }}
+          style={{
+            background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)',
+            color: '#fff', borderRadius: '6px', padding: '0.35rem 0.6rem', cursor: 'pointer',
+            fontSize: '0.8rem', backdropFilter: 'blur(4px)', marginLeft: '0.3rem',
+          }}
+        >
+          Fermer
+        </button>
+      </div>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minWidth: isZoomed ? 'fit-content' : undefined,
+        minHeight: isZoomed ? 'fit-content' : undefined,
+        padding: isZoomed ? '50px 20px 20px' : 0,
+      }}>
+        <img
+          src={src}
+          alt="Screenshot"
+          onClick={(e) => { e.stopPropagation(); cycleZoom() }}
+          style={{
+            maxWidth: zoom === 1 ? '95vw' : undefined,
+            maxHeight: zoom === 1 ? '95vh' : undefined,
+            width: zoom > 1 ? `${zoom * 100}%` : undefined,
+            borderRadius: zoom === 1 ? '8px' : 0,
+            imageRendering: zoom > 1 ? 'pixelated' : 'auto',
+            cursor: zoomIndex < ZOOM_LEVELS.length - 1 ? 'zoom-in' : 'zoom-out',
+            display: 'block',
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
 function BrowserCard({ result, screenshot, showIteration }: {
   result: SeleniumBrowserResult; screenshot?: string; showIteration: boolean
 }) {
@@ -145,19 +222,9 @@ function BrowserCard({ result, screenshot, showIteration }: {
         </div>
       )}
 
-      {/* Expanded screenshot modal */}
+      {/* Expanded screenshot lightbox */}
       {expanded && screenshot && (
-        <div
-          onClick={() => setExpanded(false)}
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.85)', zIndex: 9999,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-          }}
-        >
-          <img src={screenshot} alt="Full screen"
-            style={{ maxWidth: '95vw', maxHeight: '95vh', borderRadius: '8px' }} />
-        </div>
+        <ScreenshotLightbox src={screenshot} onClose={() => setExpanded(false)} />
       )}
 
       <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.5rem' }}>

@@ -8,6 +8,7 @@ export default function SeleniumConfigPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [warnings, setWarnings] = useState<string[]>([])
 
   useEffect(() => {
     fetchDriverConfig()
@@ -23,9 +24,15 @@ export default function SeleniumConfigPage() {
     setSaving(true)
     setMessage('')
     setError('')
+    setWarnings([])
     try {
-      await saveDriverConfig({ chrome, firefox, edge })
-      setMessage('Configuration saved successfully')
+      const result = await saveDriverConfig({ chrome, firefox, edge })
+      if (result.warnings && result.warnings.length > 0) {
+        setWarnings(result.warnings)
+        setMessage('Configuration saved (with warnings)')
+      } else {
+        setMessage('Configuration saved successfully')
+      }
     } catch {
       setError('Failed to save configuration')
     } finally {
@@ -98,9 +105,17 @@ export default function SeleniumConfigPage() {
           <button onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save Configuration'}
           </button>
-          {message && <span style={{ color: '#4ade80', fontSize: '0.85rem' }}>{message}</span>}
+          {message && <span style={{ color: warnings.length > 0 ? '#fbbf24' : '#4ade80', fontSize: '0.85rem' }}>{message}</span>}
           {error && <span style={{ color: '#f87171', fontSize: '0.85rem' }}>{error}</span>}
         </div>
+        {warnings.length > 0 && (
+          <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '6px', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
+            <div style={{ color: '#fbbf24', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>File not found:</div>
+            {warnings.map((w, i) => (
+              <div key={i} style={{ color: '#fbbf24', fontSize: '0.8rem' }}>{w}</div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

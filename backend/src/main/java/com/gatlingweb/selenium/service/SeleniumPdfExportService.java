@@ -154,6 +154,147 @@ public class SeleniumPdfExportService {
         return convertHtmlToPdf(html.toString());
     }
 
+    public byte[] generateComparisonPdf(Long idA, Long idB) {
+        SeleniumTestRun testA = testRunRepository.findById(idA)
+                .orElseThrow(() -> new IllegalArgumentException("Test not found: " + idA));
+        SeleniumTestRun testB = testRunRepository.findById(idB)
+                .orElseThrow(() -> new IllegalArgumentException("Test not found: " + idB));
+
+        List<SeleniumMetricsSnapshot> metricsA = metricsCollector.getMetrics(idA);
+        List<SeleniumMetricsSnapshot> metricsB = metricsCollector.getMetrics(idB);
+        List<InfraMetricsSnapshot> infraA = metricsPersistenceService.getInfraMetrics(idA);
+        List<InfraMetricsSnapshot> infraB = metricsPersistenceService.getInfraMetrics(idB);
+
+        // Aggregate percentiles from time-series
+        Map<String, Double> aggA = aggregateForPdf(testA, metricsA);
+        Map<String, Double> aggB = aggregateForPdf(testB, metricsB);
+
+        // Compute diffs
+        Map<String, Double> diff = new LinkedHashMap<>();
+        for (String key : aggA.keySet()) {
+            Double valA = aggA.get(key);
+            Double valB = aggB.get(key);
+            if (valA != null && valB != null && valA != 0) {
+                diff.put(key, ((valB - valA) / Math.abs(valA)) * 100.0);
+            } else {
+                diff.put(key, null);
+            }
+        }
+
+        StringBuilder html = new StringBuilder();
+        html.append(htmlHead("Selenium Comparison - #" + idA + " vs #" + idB));
+        html.append("<h1>Selenium Test Comparison</h1>");
+
+        // Test info side by side
+        html.append("<table>");
+        html.append("<tr><th></th><th>Test A (#").append(testA.getId()).append(")</th><th>Test B (#").append(testB.getId()).append(")</th></tr>");
+        html.append("<tr><td>Script</td><td>").append(esc(testA.getScriptClass())).append("</td><td>").append(esc(testB.getScriptClass())).append("</td></tr>");
+        html.append("<tr><td>Browser</td><td>").append(esc(testA.getBrowser())).append("</td><td>").append(esc(testB.getBrowser())).append("</td></tr>");
+        html.append("<tr><td>Instances</td><td>").append(testA.getInstances()).append("</td><td>").append(testB.getInstances()).append("</td></tr>");
+        html.append("<tr><td>Loops</td><td>").append(testA.getLoops()).append("</td><td>").append(testB.getLoops()).append("</td></tr>");
+        html.append("<tr><td>Version</td><td>").append(testA.getVersion() != null ? esc(testA.getVersion()) : "-").append("</td><td>").append(testB.getVersion() != null ? esc(testB.getVersion()) : "-").append("</td></tr>");
+        html.append("<tr><td>Status</td><td>").append(testA.getStatus().name()).append("</td><td>").append(testB.getStatus().name()).append("</td></tr>");
+        if (testA.getStartTime() != null) html.append("<tr><td>Start</td><td>").append(formatTimestamp(testA.getStartTime())).append("</td><td>").append(formatTimestamp(testB.getStartTime())).append("</td></tr>");
+        if (testA.getStartTime() != null && testA.getEndTime() != null) {
+            html.append("<tr><td>Duration</td><td>").append(formatDuration(testA.getEndTime() - testA.getStartTime())).append("</td><td>");
+            if (testB.getStartTime() != null && testB.getEndTime() != null) html.append(formatDuration(testB.getEndTime() - testB.getStartTime()));
+            else html.append("-");
+            html.append("</td></tr>");
+        }
+        html.append("</table>");
+
+        // Metrics comparison
+        html.append("<h2>Metrics Comparison</h2>");
+        html.append("<table>");
+        html.append("<tr><th>Metric</th><th>Test A</th><th>Test B</th><th>Diff (%)</th></tr>");
+
+        String[][] metrics = {
+            {"meanStepDuration", "Mean Step (ms)"},
+            {"p50", "p50 (ms)"},
+            {"p75", "p75 (ms)"},
+            {"p95", "p95 (ms)"},
+            {"p99", "p99 (ms)"},
+            {"totalIterations", "Total Iterations"},
+            {"passedIterations", "Passed Iterations"},
+            {"failedIterations", "Failed Iterations"},
+            {"errorRate", "Error Rate (%)"},
+            {"passedInstances", "Passed Instances"},
+            {"failedInstances", "Failed Instances"},
+        };
+
+        for (String[] m : metrics) {
+            String key = m[0];
+            String label = m[1];
+            Double valA = aggA.get(key);
+            Double valB = aggB.get(key);
+            Double d = diff.get(key);
+
+            String diffStr = d != null ? String.format("%+.1f%%", d) : "-";
+            String diffColor = "#666";
+            if (d != null) {
+                boolean lowerIsBetter = key.contains("Step") || key.startsWith("p") || key.equals("errorRate") || key.equals("failedIterations") || key.equals("failedInstances");
+                if (lowerIsBetter ? d < 0 : d > 0) diffColor = "#27ae60";
+                else if (lowerIsBetter ? d > 0 : d < 0) diffColor = "#e94560";
+            }
+
+            html.append("<tr>");
+            html.append("<td style=\"font-weight:bold;\">").append(label).append("</td>");
+            html.append("<td>").append(valA != null ? String.format("%.1f", valA) : "-").append("</td>");
+            html.append("<td>").append(valB != null ? String.format("%.1f", valB) : "-").append("</td>");
+            html.append("<td style=\"color:").append(diffColor).append(";font-weight:bold;\">").append(diffStr).append("</td>");
+            html.append("</tr>");
+        }
+        html.append("</table>");
+
+        // Time-series for both tests
+        if (!metricsA.isEmpty()) {
+            html.append("<h2>Selenium Metrics - Test A (#").append(testA.getId()).append(")</h2>");
+            appendSeleniumTimeSeries(html, metricsA);
+        }
+        if (!metricsB.isEmpty()) {
+            html.append("<h2>Selenium Metrics - Test B (#").append(testB.getId()).append(")</h2>");
+            appendSeleniumTimeSeries(html, metricsB);
+        }
+
+        // Infra metrics
+        if (!infraA.isEmpty()) {
+            html.append("<h2>Infrastructure - Test A (#").append(testA.getId()).append(")</h2>");
+            appendInfraMetricsSummary(html, infraA);
+        }
+        if (!infraB.isEmpty()) {
+            html.append("<h2>Infrastructure - Test B (#").append(testB.getId()).append(")</h2>");
+            appendInfraMetricsSummary(html, infraB);
+        }
+
+        html.append(htmlFoot());
+        return convertHtmlToPdf(html.toString());
+    }
+
+    private Map<String, Double> aggregateForPdf(SeleniumTestRun run, List<SeleniumMetricsSnapshot> metrics) {
+        Map<String, Double> agg = new LinkedHashMap<>();
+        agg.put("meanStepDuration", run.getMeanStepDuration());
+
+        if (!metrics.isEmpty()) {
+            agg.put("p50", metrics.stream().mapToDouble(SeleniumMetricsSnapshot::p50).filter(v -> v > 0).average().orElse(0));
+            agg.put("p75", metrics.stream().mapToDouble(SeleniumMetricsSnapshot::p75).filter(v -> v > 0).average().orElse(0));
+            agg.put("p95", metrics.stream().mapToDouble(SeleniumMetricsSnapshot::p95).filter(v -> v > 0).average().orElse(0));
+            agg.put("p99", metrics.stream().mapToDouble(SeleniumMetricsSnapshot::p99).filter(v -> v > 0).average().orElse(0));
+        } else {
+            agg.put("p50", null); agg.put("p75", null); agg.put("p95", null); agg.put("p99", null);
+        }
+
+        int total = run.getTotalIterations();
+        int failed = run.getFailedIterations();
+        agg.put("totalIterations", (double) total);
+        agg.put("passedIterations", (double) run.getPassedIterations());
+        agg.put("failedIterations", (double) failed);
+        agg.put("errorRate", total > 0 ? ((double) failed / total) * 100.0 : 0.0);
+        agg.put("passedInstances", (double) run.getPassedInstances());
+        agg.put("failedInstances", (double) run.getFailedInstances());
+
+        return agg;
+    }
+
     private void appendStepDetails(StringBuilder html, List<SeleniumBrowserResult> results) {
         for (SeleniumBrowserResult r : results) {
             if (r.getStepsJson() == null) continue;

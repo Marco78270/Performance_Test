@@ -29,7 +29,8 @@ public class SeleniumFileService {
 
     private Path resolveAndValidate(String relativePath) {
         Path resolved = scriptsRoot.resolve(relativePath).normalize();
-        if (!resolved.startsWith(scriptsRoot)) {
+        Path dataRoot = scriptsRoot.getParent().resolve("data").toAbsolutePath().normalize();
+        if (!resolved.startsWith(scriptsRoot) && !resolved.startsWith(dataRoot)) {
             throw new SecurityException("Path traversal detected: " + relativePath);
         }
         return resolved;
@@ -40,7 +41,16 @@ public class SeleniumFileService {
             Files.createDirectories(scriptsRoot);
             return List.of();
         }
-        return buildTree(scriptsRoot, scriptsRoot);
+        List<SimulationFileDto> result = new ArrayList<>(buildTree(scriptsRoot, scriptsRoot));
+        // Include data/ directory (CSV files for variabilisation)
+        Path dataRoot = scriptsRoot.getParent().resolve("data").toAbsolutePath().normalize();
+        if (Files.exists(dataRoot)) {
+            List<SimulationFileDto> dataChildren = buildTree(dataRoot, scriptsRoot);
+            if (!dataChildren.isEmpty()) {
+                result.add(new SimulationFileDto("../data", "data", true, dataChildren));
+            }
+        }
+        return result;
     }
 
     private List<SimulationFileDto> buildTree(Path dir, Path root) throws IOException {
@@ -52,7 +62,7 @@ public class SeleniumFileService {
                 if (Files.isDirectory(entry)) {
                     List<SimulationFileDto> children = buildTree(entry, root);
                     result.add(new SimulationFileDto(relativePath, name, true, children));
-                } else if (name.endsWith(".java")) {
+                } else if (name.endsWith(".java") || name.endsWith(".csv")) {
                     result.add(new SimulationFileDto(relativePath, name, false, null));
                 }
             }

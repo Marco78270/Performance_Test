@@ -284,6 +284,60 @@ export async function fetchSeleniumInfraMetrics(id: number): Promise<unknown[]> 
   return res.json()
 }
 
+// --- SikuliLite Images ---
+
+export interface SikuliImage {
+  name: string
+  size: number
+  lastModified: number
+}
+
+export async function fetchSikuliImages(): Promise<SikuliImage[]> {
+  const res = await authFetch('/api/selenium/sikuli/images')
+  if (!res.ok) throw new Error('Failed to fetch sikuli images')
+  return res.json()
+}
+
+export async function uploadSikuliImage(file: File): Promise<void> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await authFetch('/api/selenium/sikuli/images', {
+    method: 'POST',
+    body: formData,
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || 'Failed to upload image')
+  }
+}
+
+export async function deleteSikuliImage(name: string): Promise<void> {
+  const res = await authFetch(`/api/selenium/sikuli/images?name=${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error('Failed to delete image')
+}
+
+export function getSikuliImageUrl(name: string): string {
+  return `/api/selenium/sikuli/images/${encodeURIComponent(name)}`
+}
+
+// --- Comparison ---
+
+export interface SeleniumComparisonResult {
+  testA: SeleniumTestRun
+  testB: SeleniumTestRun
+  diffPercent: Record<string, number | null>
+  aggregatedA: Record<string, number | null>
+  aggregatedB: Record<string, number | null>
+}
+
+export async function fetchSeleniumComparison(idA: number, idB: number): Promise<SeleniumComparisonResult> {
+  const res = await authFetch(`/api/selenium/compare?ids=${idA},${idB}`)
+  if (!res.ok) throw new Error('Failed to fetch comparison')
+  return res.json()
+}
+
 // --- Grid ---
 
 export async function fetchGridStatus(): Promise<{ status: string; url: string }> {
@@ -306,11 +360,12 @@ export async function fetchDriverConfig(): Promise<DriverConfig> {
   return res.json()
 }
 
-export async function saveDriverConfig(config: DriverConfig): Promise<void> {
+export async function saveDriverConfig(config: DriverConfig): Promise<{ warnings?: string[] }> {
   const res = await authFetch('/api/selenium/config/drivers', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config),
   })
   if (!res.ok) throw new Error('Failed to save driver config')
+  return res.json()
 }
