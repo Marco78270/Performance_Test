@@ -1,0 +1,142 @@
+================================================================================
+  GATLING-WEB — PROCÉDURE DE MISE À JOUR EN PRODUCTION
+================================================================================
+Date de rédaction : 2026-02-20
+Version courante  : 2.3
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURE DE DÉPLOIEMENT
+--------------------------------------------------------------------------------
+
+  Machine de développement (où le code source est modifié)
+    C:\Gatling-Web\          ← sources (Java, React, Maven)
+    C:\Gatling-Web\build\GatlingWeb\  ← résultat du package.bat (à distribuer)
+
+  Machine de production (où l'appli tourne)
+    <INSTALL>\GatlingWeb\    ← dossier d'installation (ex: C:\Apps\GatlingWeb\)
+    %USERPROFILE%\gatlingweb.db  ← base de données SQLite (ex: C:\Users\user\)
+
+  La base .db est HORS du dossier d'installation → jamais écrasée lors d'une MàJ.
+
+--------------------------------------------------------------------------------
+2. STRUCTURE DU DOSSIER D'INSTALLATION
+--------------------------------------------------------------------------------
+
+  GatlingWeb\
+  ├── GatlingWeb.exe              ← exécutable principal
+  ├── app\
+  │   └── gatling-web.jar         ← application Spring Boot (backend + frontend)
+  ├── runtime\                    ← JRE autoportant (aucun Java requis en prod)
+  │   ├── bin\
+  │   └── lib\
+  ├── workspace\                  ← projet Gatling (scripts .scala, pom.xml)
+  │   └── simulations\            ← SCRIPTS UTILISATEUR — NE PAS ÉCRASER
+  └── selenium-workspace\         ← projet Selenium (scripts .java, images)
+      ├── scripts\                ← SCRIPTS UTILISATEUR — NE PAS ÉCRASER
+      └── data\                   ← images SikuliLite, CSV — NE PAS ÉCRASER
+
+--------------------------------------------------------------------------------
+3. FICHIERS À COPIER LORS D'UNE MISE À JOUR
+--------------------------------------------------------------------------------
+
+  ✅ À REMPLACER (binaires de l'application) :
+     build\GatlingWeb\GatlingWeb.exe    →  <INSTALL>\GatlingWeb\GatlingWeb.exe
+     build\GatlingWeb\app\              →  <INSTALL>\GatlingWeb\app\
+     build\GatlingWeb\runtime\          →  <INSTALL>\GatlingWeb\runtime\
+
+  ❌ NE PAS TOUCHER (données utilisateur) :
+     <INSTALL>\GatlingWeb\workspace\simulations\
+     <INSTALL>\GatlingWeb\selenium-workspace\scripts\
+     <INSTALL>\GatlingWeb\selenium-workspace\data\
+     %USERPROFILE%\gatlingweb.db
+
+  ℹ  Le workspace\pom.xml peut être remplacé si la version du plugin Gatling
+     a changé — vérifier les release notes avant de le faire.
+
+--------------------------------------------------------------------------------
+4. ÉTAPES DE MISE À JOUR
+--------------------------------------------------------------------------------
+
+  [ MACHINE DE DÉVELOPPEMENT ]
+
+  Étape 1 — Builder le nouveau package
+    Ouvrir un terminal dans C:\Gatling-Web\ et lancer :
+      package.bat
+    Le résultat est produit dans :
+      C:\Gatling-Web\build\GatlingWeb\
+
+  Étape 2 — Transférer les fichiers vers la prod
+    Copier vers la machine de production (clé USB, partage réseau, etc.) :
+      build\GatlingWeb\GatlingWeb.exe
+      build\GatlingWeb\app\          (dossier complet)
+      build\GatlingWeb\runtime\      (dossier complet)
+
+  [ MACHINE DE PRODUCTION ]
+
+  Étape 3 — Sauvegarder la base de données
+    copy "%USERPROFILE%\gatlingweb.db" "%USERPROFILE%\gatlingweb_backup_YYYYMMDD.db"
+    (remplacer YYYYMMDD par la date du jour, ex: 20260220)
+
+  Étape 4 — Arrêter l'application
+    Fermer la fenêtre GatlingWeb, ou via le terminal :
+      taskkill /f /im GatlingWeb.exe
+
+  Étape 5 — Remplacer les binaires
+    Copier les fichiers transférés à l'étape 2 :
+      → <INSTALL>\GatlingWeb\GatlingWeb.exe   (écraser)
+      → <INSTALL>\GatlingWeb\app\             (écraser le contenu)
+      → <INSTALL>\GatlingWeb\runtime\         (écraser le contenu)
+
+    Commandes xcopy exemple :
+      copy /Y GatlingWeb.exe     <INSTALL>\GatlingWeb\GatlingWeb.exe
+      xcopy /E /Y /I app\        <INSTALL>\GatlingWeb\app\
+      xcopy /E /Y /I runtime\    <INSTALL>\GatlingWeb\runtime\
+
+  Étape 6 — Redémarrer l'application
+    Double-cliquer sur GatlingWeb.exe
+    ou via terminal :
+      start <INSTALL>\GatlingWeb\GatlingWeb.exe
+
+  Étape 7 — Vérifier la migration de la base
+    Au démarrage, Flyway applique automatiquement les nouvelles migrations SQL.
+    Dans les logs (fenêtre de l'exe), vérifier la présence de :
+      "Successfully validated X migrations"
+      "Successfully applied X migration" (si nouvelles tables/colonnes)
+    Si aucune nouvelle migration : "Schema is up to date"
+
+  Étape 8 — Vérifier l'application
+    Ouvrir http://localhost:8080 dans le navigateur
+    Contrôler que l'historique des tests est bien présent
+    Contrôler que les scripts Gatling et Selenium sont intacts
+
+--------------------------------------------------------------------------------
+5. ROLLBACK EN CAS DE PROBLÈME
+--------------------------------------------------------------------------------
+
+  Si la nouvelle version ne démarre pas ou corrompt des données :
+
+  Étape R1 — Arrêter l'application
+    taskkill /f /im GatlingWeb.exe
+
+  Étape R2 — Restaurer la base de données
+    copy "%USERPROFILE%\gatlingweb_backup_YYYYMMDD.db" "%USERPROFILE%\gatlingweb.db"
+
+  Étape R3 — Restaurer l'ancien binaire
+    Conserver l'ancienne version dans un dossier GatlingWeb_vX.X\ avant chaque MàJ.
+    Recopier GatlingWeb.exe, app\, runtime\ depuis ce dossier.
+
+  Étape R4 — Redémarrer avec l'ancienne version
+    start <INSTALL>\GatlingWeb\GatlingWeb.exe
+
+--------------------------------------------------------------------------------
+6. CONSEILS
+--------------------------------------------------------------------------------
+
+  • Conserver les 2 ou 3 derniers backups du .db (rotation manuelle ou script)
+  • Tester la mise à jour sur une machine de recette avant la prod
+  • Ne jamais lancer package.bat directement sur la machine de prod
+  • Les drivers Selenium (chromedriver.exe, msedgedriver.exe) ne sont pas inclus
+    dans le package — les configurer via l'interface Selenium > Configuration
+    pour éviter tout téléchargement automatique au premier test
+
+================================================================================

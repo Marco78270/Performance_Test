@@ -18,7 +18,7 @@ export interface SeleniumTestRun {
   passedIterations: number
   failedIterations: number
   version: string | null
-  labels: string
+  labels: string[]
   gridUrl: string | null
   meanStepDuration: number | null
   notes: string | null
@@ -320,6 +320,29 @@ export async function deleteSikuliImage(name: string): Promise<void> {
 
 export function getSikuliImageUrl(name: string): string {
   return `/api/selenium/sikuli/images/${encodeURIComponent(name)}`
+}
+
+// --- Trends ---
+
+export interface SeleniumTrendPoint {
+  testRunId: number
+  startTime: string | null
+  version: string | null
+  meanStepDuration: number | null
+  passRate: number
+  totalIterations: number
+}
+
+export interface SeleniumTrendData {
+  scriptClass: string
+  points: SeleniumTrendPoint[]
+}
+
+export async function fetchSeleniumTrends(scriptClass: string, limit = 20): Promise<SeleniumTrendData> {
+  const params = new URLSearchParams({ scriptClass, limit: String(limit) })
+  const res = await authFetch(`/api/selenium/trends?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch trends')
+  return res.json()
 }
 
 // --- Comparison ---

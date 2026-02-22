@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,11 +19,21 @@ public interface SeleniumTestRunRepository extends JpaRepository<SeleniumTestRun
     Optional<SeleniumTestRun> findFirstByStatus(TestStatus status);
     List<SeleniumTestRun> findAllByStatus(TestStatus status);
 
-    @Query("SELECT t.labels FROM SeleniumTestRun t WHERE t.labels IS NOT NULL AND t.labels <> ''")
-    List<String> findAllLabelsRaw();
+    @Query("SELECT DISTINCT l FROM SeleniumTestRun t JOIN t.labels l ORDER BY l")
+    List<String> findAllDistinctLabels();
 
-    Page<SeleniumTestRun> findByLabelsContaining(String label, Pageable pageable);
-    Page<SeleniumTestRun> findByBrowserAndLabelsContaining(String browser, String label, Pageable pageable);
-    Page<SeleniumTestRun> findByStatusAndLabelsContaining(TestStatus status, String label, Pageable pageable);
-    Page<SeleniumTestRun> findByBrowserAndStatusAndLabelsContaining(String browser, TestStatus status, String label, Pageable pageable);
+    @Query("SELECT DISTINCT t FROM SeleniumTestRun t JOIN t.labels l WHERE l = :label")
+    Page<SeleniumTestRun> findByLabel(@Param("label") String label, Pageable pageable);
+
+    @Query("SELECT DISTINCT t FROM SeleniumTestRun t JOIN t.labels l WHERE t.browser = :browser AND l = :label")
+    Page<SeleniumTestRun> findByBrowserAndLabel(@Param("browser") String browser, @Param("label") String label, Pageable pageable);
+
+    @Query("SELECT DISTINCT t FROM SeleniumTestRun t JOIN t.labels l WHERE t.status = :status AND l = :label")
+    Page<SeleniumTestRun> findByStatusAndLabel(@Param("status") TestStatus status, @Param("label") String label, Pageable pageable);
+
+    @Query("SELECT DISTINCT t FROM SeleniumTestRun t JOIN t.labels l WHERE t.browser = :browser AND t.status = :status AND l = :label")
+    Page<SeleniumTestRun> findByBrowserAndStatusAndLabel(@Param("browser") String browser, @Param("status") TestStatus status, @Param("label") String label, Pageable pageable);
+
+    @Query("SELECT t FROM SeleniumTestRun t WHERE t.scriptClass = :scriptClass AND t.status = :status ORDER BY t.startTime DESC")
+    List<SeleniumTestRun> findByScriptClassAndStatusOrderByStartTimeDesc(@Param("scriptClass") String scriptClass, @Param("status") TestStatus status, Pageable pageable);
 }

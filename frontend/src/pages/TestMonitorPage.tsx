@@ -76,8 +76,6 @@ function formatTime(sec: unknown): string {
 
 import { getLabelColor } from '../utils/labelColors'
 
-type TabType = 'gatling' | 'infra'
-
 export default function TestMonitorPage() {
   const { id } = useParams<{ id: string }>()
   const testId = Number(id)
@@ -85,7 +83,6 @@ export default function TestMonitorPage() {
   const [testRun, setTestRun] = useState<TestRun | null>(null)
   const [loading, setLoading] = useState(true)
   const [showLogs, setShowLogs] = useState(false)
-  const [activeTab, setActiveTab] = useState<TabType>('gatling')
   const [addingLabel, setAddingLabel] = useState('')
   const [showAddLabel, setShowAddLabel] = useState(false)
   const [historicalMetrics, setHistoricalMetrics] = useState<MetricsSnapshot[]>([])
@@ -359,26 +356,7 @@ export default function TestMonitorPage() {
         <ThresholdDetailsPanel details={testRun.thresholdDetails} verdict={testRun.thresholdVerdict} />
       )}
 
-      <div className="tabs" style={{ marginBottom: '1rem' }}>
-        <button
-          className={`tab-btn ${activeTab === 'gatling' ? 'active' : ''}`}
-          onClick={() => setActiveTab('gatling')}
-        >
-          Gatling Metrics
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'infra' ? 'active' : ''}`}
-          onClick={() => setActiveTab('infra')}
-        >
-          Infrastructure
-        </button>
-      </div>
-
-      {activeTab === 'infra' ? (
-        <ErrorBoundary fallback={<div className="card">Failed to render infrastructure metrics</div>}>
-          <InfraMetricsPanel metrics={infraMetrics} connected={infraConnected} />
-        </ErrorBoundary>
-      ) : (
+      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1rem 0 0.5rem' }}>Gatling Metrics</div>
       <ErrorBoundary fallback={<div className="card">Failed to render charts</div>}>
         <div className="charts-grid">
           <div className="card">
@@ -434,7 +412,11 @@ export default function TestMonitorPage() {
           </div>
         </div>
       </ErrorBoundary>
-      )}
+
+      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1rem 0 0.5rem' }}>Infrastructure</div>
+      <ErrorBoundary fallback={<div className="card">Failed to render infrastructure metrics</div>}>
+        <InfraMetricsPanel metrics={infraMetrics} connected={infraConnected} />
+      </ErrorBoundary>
     </div>
   )
 }

@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class TestRunService {
@@ -196,7 +195,7 @@ public class TestRunService {
     }
 
     public Page<TestRunDto> findByLabel(String label, Pageable pageable) {
-        return repository.findByLabelsContaining(label, pageable).map(TestRunDto::from);
+        return repository.findByLabel(label, pageable).map(TestRunDto::from);
     }
 
     public Optional<TestRunDto> findById(Long id) {
@@ -228,12 +227,12 @@ public class TestRunService {
 
     public void updateLabels(Long id, List<String> labels) {
         repository.findById(id).ifPresent(run -> {
-            String joined = labels.stream()
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .reduce((a, b) -> a + "," + b)
-                .orElse("");
-            run.setLabels(joined);
+            Set<String> labelSet = new LinkedHashSet<>();
+            for (String l : labels) {
+                String t = l.trim();
+                if (!t.isEmpty()) labelSet.add(t);
+            }
+            run.setLabels(labelSet);
             repository.save(run);
         });
     }
@@ -276,14 +275,7 @@ public class TestRunService {
     }
 
     public List<String> getAllLabels() {
-        List<String> raw = repository.findAllLabelsRaw();
-        return raw.stream()
-            .flatMap(s -> Arrays.stream(s.split(",")))
-            .map(String::trim)
-            .filter(s -> !s.isEmpty())
-            .distinct()
-            .sorted()
-            .toList();
+        return repository.findAllDistinctLabels();
     }
 
     public String exportCsv() {
@@ -308,7 +300,7 @@ public class TestRunService {
             sb.append(r.getP95ResponseTime() != null ? String.format("%.1f", r.getP95ResponseTime()) : "").append(',');
             sb.append(r.getP99ResponseTime() != null ? String.format("%.1f", r.getP99ResponseTime()) : "").append(',');
             sb.append(String.format("%.2f", errRate)).append(',');
-            sb.append(csvEscape(r.getLabels())).append(',');
+            sb.append(csvEscape(r.getLabels() != null ? String.join(",", r.getLabels()) : "")).append(',');
             sb.append(r.getThresholdVerdict() != null ? r.getThresholdVerdict().name() : "").append('\n');
         }
         return sb.toString();

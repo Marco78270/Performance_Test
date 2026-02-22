@@ -2,6 +2,8 @@ package com.gatlingweb.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "test_runs")
@@ -34,7 +36,10 @@ public class TestRun {
     @Column(name = "p99_response_time")
     private Double p99ResponseTime;
 
-    private String labels = "";
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "test_run_labels", joinColumns = @JoinColumn(name = "test_run_id"))
+    @Column(name = "label")
+    private Set<String> labels = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
     private ThresholdVerdict thresholdVerdict;
@@ -88,8 +93,8 @@ public class TestRun {
     public Double getP99ResponseTime() { return p99ResponseTime; }
     public void setP99ResponseTime(Double p99ResponseTime) { this.p99ResponseTime = p99ResponseTime; }
 
-    public String getLabels() { return labels; }
-    public void setLabels(String labels) { this.labels = labels; }
+    public Set<String> getLabels() { return labels; }
+    public void setLabels(Set<String> labels) { this.labels = labels; }
 
     public ThresholdVerdict getThresholdVerdict() { return thresholdVerdict; }
     public void setThresholdVerdict(ThresholdVerdict thresholdVerdict) { this.thresholdVerdict = thresholdVerdict; }

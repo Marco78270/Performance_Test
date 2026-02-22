@@ -79,8 +79,6 @@ function downsample(data: ChartPoint[], maxPoints = 300): ChartPoint[] {
   return result
 }
 
-type TabType = 'browsers' | 'metrics' | 'infra'
-
 const ZOOM_LEVELS = [1, 2, 3, 4]
 
 function ScreenshotLightbox({ src, onClose }: { src: string; onClose: () => void }) {
@@ -416,8 +414,6 @@ export default function SeleniumMonitorPage() {
   const [historicalResults, setHistoricalResults] = useState<SeleniumBrowserResult[]>([])
   const [historicalMetrics, setHistoricalMetrics] = useState<SeleniumMetricsSnapshot[]>([])
   const [historicalInfra, setHistoricalInfra] = useState<InfraMetricsSnapshot[]>([])
-  const [activeTab, setActiveTab] = useState<TabType>('browsers')
-
   const { results: liveResults } = useSeleniumWebSocket(testRunId)
   const screenshots = useSeleniumScreenWebSocket(testRunId)
   const { metrics: liveMetrics } = useSeleniumMetricsWebSocket(testRunId)
@@ -668,135 +664,116 @@ export default function SeleniumMonitorPage() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="tabs" style={{ marginBottom: '1rem' }}>
-        <button className={`tab-btn ${activeTab === 'browsers' ? 'active' : ''}`}
-          onClick={() => setActiveTab('browsers')}>
-          Browsers
-        </button>
-        <button className={`tab-btn ${activeTab === 'metrics' ? 'active' : ''}`}
-          onClick={() => setActiveTab('metrics')}>
-          Metriques
-        </button>
-        <button className={`tab-btn ${activeTab === 'infra' ? 'active' : ''}`}
-          onClick={() => setActiveTab('infra')}>
-          Infrastructure
-        </button>
+      {/* Section: Browsers */}
+      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1rem 0 0.5rem' }}>Browsers</div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+        gap: '1rem',
+      }}>
+        {hasLoops ? (
+          // Multi-loop: group by browser, show only latest iteration expanded
+          Array.from(resultsByBrowser.entries())
+            .sort(([a], [b]) => a - b)
+            .map(([browserIndex, browserResults]) => (
+              <BrowserIterationsCard
+                key={browserIndex}
+                browserIndex={browserIndex}
+                browserResults={browserResults}
+                screenshot={screenshots.get(browserIndex)}
+                isLive={latestPerBrowser.get(browserIndex)?.status === 'RUNNING'}
+              />
+            ))
+        ) : (
+          // Single loop: original BrowserCard layout
+          results.map((r) => (
+            <BrowserCard key={r.browserIndex} result={r}
+              screenshot={screenshots.get(r.browserIndex)} showIteration={false} />
+          ))
+        )}
+
+        {/* Placeholders for browsers not yet started */}
+        {isActive && (
+          (() => {
+            const startedBrowsers = new Set(results.map(r => r.browserIndex))
+            const placeholders = []
+            for (let i = 0; i < testRun.instances; i++) {
+              if (!startedBrowsers.has(i)) {
+                placeholders.push(
+                  <div key={`placeholder-${i}`} style={{
+                    border: '1px dashed var(--border-color)', borderRadius: '8px', padding: '1rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--text-secondary)', minHeight: '100px',
+                  }}>
+                    Browser #{i + 1} - Waiting...
+                  </div>
+                )
+              }
+            }
+            return placeholders
+          })()
+        )}
       </div>
 
-      {/* Tab: Browsers */}
-      {activeTab === 'browsers' && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-          gap: '1rem',
-        }}>
-          {hasLoops ? (
-            // Multi-loop: group by browser, show only latest iteration expanded
-            Array.from(resultsByBrowser.entries())
-              .sort(([a], [b]) => a - b)
-              .map(([browserIndex, browserResults]) => (
-                <BrowserIterationsCard
-                  key={browserIndex}
-                  browserIndex={browserIndex}
-                  browserResults={browserResults}
-                  screenshot={screenshots.get(browserIndex)}
-                  isLive={latestPerBrowser.get(browserIndex)?.status === 'RUNNING'}
-                />
-              ))
-          ) : (
-            // Single loop: original BrowserCard layout
-            results.map((r) => (
-              <BrowserCard key={r.browserIndex} result={r}
-                screenshot={screenshots.get(r.browserIndex)} showIteration={false} />
-            ))
-          )}
-
-          {/* Placeholders for browsers not yet started */}
-          {isActive && (
-            (() => {
-              const startedBrowsers = new Set(results.map(r => r.browserIndex))
-              const placeholders = []
-              for (let i = 0; i < testRun.instances; i++) {
-                if (!startedBrowsers.has(i)) {
-                  placeholders.push(
-                    <div key={`placeholder-${i}`} style={{
-                      border: '1px dashed var(--border-color)', borderRadius: '8px', padding: '1rem',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: 'var(--text-secondary)', minHeight: '100px',
-                    }}>
-                      Browser #{i + 1} - Waiting...
-                    </div>
-                  )
-                }
-              }
-              return placeholders
-            })()
-          )}
+      {/* Section: Metriques */}
+      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1.5rem 0 0.5rem' }}>Metriques</div>
+      <div className="charts-grid">
+        <div className="card">
+          <h3 style={{ marginBottom: '0.5rem' }}>Iterations/s</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+              <YAxis stroke="var(--text-secondary)" />
+              <Tooltip contentStyle={tooltipStyle} formatter={(value) => [(Number(value) || 0).toFixed(2), 'iter/s']} />
+              <Line type="monotone" dataKey="iterationsPerSecond" stroke="#2980b9" dot={false} name="iter/s" />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
-      )}
 
-      {/* Tab: Metriques */}
-      {activeTab === 'metrics' && (
-        <div className="charts-grid">
-          <div className="card">
-            <h3 style={{ marginBottom: '0.5rem' }}>Iterations/s</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
-                <Tooltip contentStyle={tooltipStyle} formatter={(value) => [(Number(value) || 0).toFixed(2), 'iter/s']} />
-                <Line type="monotone" dataKey="iterationsPerSecond" stroke="#2980b9" dot={false} name="iter/s" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="card">
-            <h3 style={{ marginBottom: '0.5rem' }}>Mean Step Duration</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
-                <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${(Number(value) || 0).toFixed(0)} ms`, 'Duration']} />
-                <Line type="monotone" dataKey="meanStepDuration" stroke="#e67e22" dot={false} name="Mean Step (ms)" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="card">
-            <h3 style={{ marginBottom: '0.5rem' }}>Active Browsers</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
-                <Tooltip contentStyle={tooltipStyle} formatter={(value) => [Number(value) || 0, 'browsers']} />
-                <Line type="monotone" dataKey="activeBrowsers" stroke="#9b59b6" dot={false} name="browsers" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="card">
-            <h3 style={{ marginBottom: '0.5rem' }}>Errors/s</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
-                <Tooltip contentStyle={tooltipStyle} formatter={(value) => [(Number(value) || 0).toFixed(2), 'err/s']} />
-                <Line type="monotone" dataKey="errorsPerSecond" stroke="#e94560" dot={false} name="err/s" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="card">
+          <h3 style={{ marginBottom: '0.5rem' }}>Mean Step Duration</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+              <YAxis stroke="var(--text-secondary)" />
+              <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${(Number(value) || 0).toFixed(0)} ms`, 'Duration']} />
+              <Line type="monotone" dataKey="meanStepDuration" stroke="#e67e22" dot={false} name="Mean Step (ms)" />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
-      )}
 
-      {/* Tab: Infrastructure */}
-      {activeTab === 'infra' && (
-        <InfraMetricsPanel metrics={infraMetrics} connected={infraConnected} />
-      )}
+        <div className="card">
+          <h3 style={{ marginBottom: '0.5rem' }}>Active Browsers</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+              <YAxis stroke="var(--text-secondary)" />
+              <Tooltip contentStyle={tooltipStyle} formatter={(value) => [Number(value) || 0, 'browsers']} />
+              <Line type="monotone" dataKey="activeBrowsers" stroke="#9b59b6" dot={false} name="browsers" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="card">
+          <h3 style={{ marginBottom: '0.5rem' }}>Errors/s</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
+              <YAxis stroke="var(--text-secondary)" />
+              <Tooltip contentStyle={tooltipStyle} formatter={(value) => [(Number(value) || 0).toFixed(2), 'err/s']} />
+              <Line type="monotone" dataKey="errorsPerSecond" stroke="#e94560" dot={false} name="err/s" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Section: Infrastructure */}
+      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1.5rem 0 0.5rem' }}>Infrastructure</div>
+      <InfraMetricsPanel metrics={infraMetrics} connected={infraConnected} />
     </div>
   )
 }

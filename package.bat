@@ -55,7 +55,6 @@ echo [4/5] Creating native image...
   --main-jar gatling-web.jar ^
   --main-class org.springframework.boot.loader.launch.JarLauncher ^
   --runtime-image build\runtime ^
-  --java-options "-Dspring.datasource.url=jdbc:sqlite:$APPDIR/../gatlingweb.db" ^
   --java-options "-Dgatling.workspace=$APPDIR/../workspace" ^
   --java-options "-Dselenium.workspace=$APPDIR/../selenium-workspace" ^
   --java-options "-Dselenium.screenshots-dir=$APPDIR/../selenium-workspace/screenshots" ^

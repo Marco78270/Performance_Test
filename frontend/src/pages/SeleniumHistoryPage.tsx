@@ -12,11 +12,6 @@ type SortDir = 'asc' | 'desc'
 type StatusFilter = '' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'RUNNING' | 'QUEUED'
 type ViewMode = 'list' | 'folders'
 
-function parseLabels(labels: string): string[] {
-  if (!labels) return []
-  return labels.split(',').map(s => s.trim()).filter(s => s.length > 0)
-}
-
 function formatDate(epochMs: number | null): string {
   if (!epochMs) return '-'
   return new Date(epochMs).toLocaleString()
@@ -144,11 +139,10 @@ export default function SeleniumHistoryPage() {
     const allRuns = viewMode === 'folders' ? folderData : page?.content
     const run = allRuns?.find(r => r.id === id)
     if (!run) return
-    const currentLabels = parseLabels(run.labels)
-    const newLabels = [...currentLabels, addingLabel.value.trim()]
+    const newLabels = [...(run.labels ?? []), addingLabel.value.trim()]
     await updateSeleniumTestLabels(id, newLabels)
     const updateContent = (runs: SeleniumTestRun[]) =>
-      runs.map((r) => r.id === id ? { ...r, labels: newLabels.join(',') } : r)
+      runs.map((r) => r.id === id ? { ...r, labels: newLabels } : r)
     setPage((prev) => prev ? { ...prev, content: updateContent(prev.content) } : null)
     setFolderData(prev => updateContent(prev))
     setAddingLabel(null)
@@ -162,10 +156,10 @@ export default function SeleniumHistoryPage() {
     const allRuns = viewMode === 'folders' ? folderData : page?.content
     const run = allRuns?.find(r => r.id === id)
     if (!run) return
-    const newLabels = parseLabels(run.labels).filter(l => l !== label)
+    const newLabels = (run.labels ?? []).filter(l => l !== label)
     await updateSeleniumTestLabels(id, newLabels)
     const updateContent = (runs: SeleniumTestRun[]) =>
-      runs.map((r) => r.id === id ? { ...r, labels: newLabels.join(',') } : r)
+      runs.map((r) => r.id === id ? { ...r, labels: newLabels } : r)
     setPage((prev) => prev ? { ...prev, content: updateContent(prev.content) } : null)
     setFolderData(prev => updateContent(prev))
   }
@@ -215,10 +209,10 @@ export default function SeleniumHistoryPage() {
   )
 
   const addLabelSuggestions = addingLabel
-    ? allLabels.filter(l =>
-        l.toLowerCase().includes(addingLabel.value.toLowerCase()) &&
-        !parseLabels((viewMode === 'folders' ? folderData : page?.content)?.find(r => r.id === addingLabel.id)?.labels ?? '').includes(l)
-      )
+    ? allLabels.filter(l => {
+        const run = (viewMode === 'folders' ? folderData : page?.content)?.find(r => r.id === addingLabel.id)
+        return l.toLowerCase().includes(addingLabel.value.toLowerCase()) && !(run?.labels ?? []).includes(l)
+      })
     : []
 
   const SortHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
@@ -228,7 +222,7 @@ export default function SeleniumHistoryPage() {
   )
 
   function renderTestRow(run: SeleniumTestRun, showVersion: boolean) {
-    const labels = parseLabels(run.labels)
+    const labels = run.labels ?? []
     return (
       <tr key={run.id}>
         <td>
@@ -521,7 +515,7 @@ export default function SeleniumHistoryPage() {
                       style={{
                         display: 'flex', alignItems: 'center', gap: '0.8rem',
                         padding: '0.7rem 1rem', cursor: 'pointer', userSelect: 'none',
-                        background: expanded ? 'rgba(15,52,96,0.3)' : 'transparent',
+                        background: expanded ? 'var(--bg-hover)' : 'transparent',
                         transition: 'background 0.15s',
                       }}
                     >

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatlingweb.entity.TestRun;
 import com.gatlingweb.entity.TestStatus;
 import java.time.LocalDateTime;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 public record TestRunDto(
@@ -34,12 +34,9 @@ public record TestRunDto(
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     public static TestRunDto from(TestRun run) {
-        List<String> labelList = run.getLabels() == null || run.getLabels().isBlank()
+        List<String> labelList = run.getLabels() == null
             ? List.of()
-            : Arrays.stream(run.getLabels().split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
+            : new ArrayList<>(run.getLabels());
 
         List<ThresholdEvaluationResult> details = null;
         if (run.getThresholdDetails() != null && !run.getThresholdDetails().isBlank()) {

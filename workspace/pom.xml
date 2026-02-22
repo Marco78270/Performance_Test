@@ -36,6 +36,12 @@
 
     <build>
         <sourceDirectory>simulations</sourceDirectory>
+        <!-- Données partagées avec selenium-workspace/data/ : un seul CSV pour Gatling et Selenium -->
+        <resources>
+            <resource>
+                <directory>${project.basedir}/../selenium-workspace/data</directory>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>io.gatling</groupId>

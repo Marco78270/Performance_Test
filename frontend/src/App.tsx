@@ -17,6 +17,9 @@ import SeleniumHistoryPage from './pages/SeleniumHistoryPage'
 import SeleniumMonitorPage from './pages/SeleniumMonitorPage'
 import SeleniumConfigPage from './pages/SeleniumConfigPage'
 import SeleniumComparePage from './pages/SeleniumComparePage'
+import SeleniumTrendsPage from './pages/SeleniumTrendsPage'
+import SchedulerPage from './pages/SchedulerPage'
+import SettingsPage from './pages/SettingsPage'
 import { checkAuth, clearCredentials } from './api/auth'
 import { useTheme } from './hooks/useTheme'
 import './App.css'
@@ -59,19 +62,23 @@ function App() {
       <div className="app">
         <nav className="sidebar">
           <div className="sidebar-title">Gatling Web</div>
+          <div style={{ padding: '0.3rem 0.8rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gatling</div>
           <NavLink to="/" end>Dashboard</NavLink>
           <NavLink to="/editor">Editor</NavLink>
           <NavLink to="/history">History</NavLink>
           <NavLink to="/recorder">Recorder</NavLink>
-          <NavLink to="/servers">Servers</NavLink>
           <NavLink to="/thresholds">Thresholds</NavLink>
           <NavLink to="/trends">Trends</NavLink>
-          <div style={{ borderTop: '1px solid #0f3460', margin: '0.5rem 0.8rem', opacity: 0.5 }} />
-          <div style={{ padding: '0.3rem 0.8rem', color: '#a0a0b8', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Selenium</div>
-          <NavLink to="/selenium">Selenium Dashboard</NavLink>
+          <div style={{ borderTop: '1px solid var(--border-color)', margin: '0.5rem 0.8rem', opacity: 0.5 }} />
+          <div style={{ padding: '0.3rem 0.8rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Selenium</div>
           <NavLink to="/selenium/editor">Selenium Editor</NavLink>
           <NavLink to="/selenium/history">Selenium History</NavLink>
+          <NavLink to="/selenium/trends">Selenium Trends</NavLink>
           <NavLink to="/selenium/config">Configuration</NavLink>
+          <div style={{ borderTop: '1px solid var(--border-color)', margin: '0.5rem 0.8rem', opacity: 0.5 }} />
+          <NavLink to="/scheduler">Scheduler</NavLink>
+          <NavLink to="/servers">Servers</NavLink>
+          <NavLink to="/settings">Settings</NavLink>
           <div className="sidebar-footer">
             {appVersion && <span className="app-version">v{appVersion}</span>}
             <button className="theme-toggle-btn" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
@@ -98,6 +105,9 @@ function App() {
               <Route path="/selenium/test/:id" element={<SeleniumMonitorPage />} />
               <Route path="/selenium/compare" element={<SeleniumComparePage />} />
               <Route path="/selenium/config" element={<SeleniumConfigPage />} />
+              <Route path="/selenium/trends" element={<SeleniumTrendsPage />} />
+              <Route path="/scheduler" element={<SchedulerPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </ErrorBoundary>
         </main>

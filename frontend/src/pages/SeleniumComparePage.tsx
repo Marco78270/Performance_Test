@@ -28,10 +28,6 @@ const DURATION_METRICS = ['meanStepDuration', 'p50', 'p75', 'p95', 'p99']
 const LOWER_IS_BETTER = new Set(['meanStepDuration', 'p50', 'p75', 'p95', 'p99', 'errorRate', 'failedIterations', 'failedInstances'])
 const NEUTRAL_METRICS = new Set(['totalIterations', 'passedIterations', 'passedInstances'])
 
-function parseLabels(labels: string): string[] {
-  if (!labels) return []
-  return labels.split(',').map(s => s.trim()).filter(s => s.length > 0)
-}
 
 function formatDate(epochMs: number | null): string {
   if (!epochMs) return '-'
@@ -107,8 +103,8 @@ export default function SeleniumComparePage() {
 
   const { testA, testB, diffPercent, aggregatedA, aggregatedB } = data
   const tooltipStyle = { background: 'var(--tooltip-bg)', border: '1px solid var(--border-color)' }
-  const labelsA = parseLabels(testA.labels)
-  const labelsB = parseLabels(testB.labels)
+  const labelsA = testA.labels ?? []
+  const labelsB = testB.labels ?? []
 
   const durationChartData = DURATION_METRICS.map(m => ({
     name: METRIC_LABELS[m],

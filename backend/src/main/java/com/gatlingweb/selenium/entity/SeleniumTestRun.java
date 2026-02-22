@@ -2,6 +2,8 @@ package com.gatlingweb.selenium.entity;
 
 import com.gatlingweb.entity.TestStatus;
 import jakarta.persistence.*;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "selenium_test_runs")
@@ -24,7 +26,10 @@ public class SeleniumTestRun {
     private int passedInstances;
     private int failedInstances;
     private String version;
-    private String labels = "";
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "selenium_test_run_labels", joinColumns = @JoinColumn(name = "test_run_id"))
+    @Column(name = "label")
+    private Set<String> labels = new HashSet<>();
     private String gridUrl;
     private int loops = 1;
     private int rampUpSeconds = 0;
@@ -70,8 +75,8 @@ public class SeleniumTestRun {
     public String getVersion() { return version; }
     public void setVersion(String version) { this.version = version; }
 
-    public String getLabels() { return labels; }
-    public void setLabels(String labels) { this.labels = labels; }
+    public Set<String> getLabels() { return labels; }
+    public void setLabels(Set<String> labels) { this.labels = labels; }
 
     public String getGridUrl() { return gridUrl; }
     public void setGridUrl(String gridUrl) { this.gridUrl = gridUrl; }

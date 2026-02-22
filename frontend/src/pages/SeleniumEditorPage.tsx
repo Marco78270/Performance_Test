@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 
@@ -27,7 +27,7 @@ function FileTree({
         <li key={f.path}>
           {f.directory ? (
             <details open>
-              <summary style={{ cursor: 'pointer', padding: '0.2rem 0', color: '#a0a0b8', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <summary style={{ cursor: 'pointer', padding: '0.2rem 0', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 <span style={{ flex: 1 }}>{f.name}</span>
                 <button
                   className="btn btn-secondary"
@@ -48,8 +48,8 @@ function FileTree({
                 cursor: 'pointer',
                 padding: '0.2rem 0.4rem',
                 borderRadius: '3px',
-                background: f.path === selectedPath ? '#0f3460' : 'transparent',
-                color: f.path === selectedPath ? '#e94560' : '#e0e0e0',
+                background: f.path === selectedPath ? 'var(--bg-hover)' : 'transparent',
+                color: f.path === selectedPath ? 'var(--accent)' : 'var(--text-primary)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.3rem',
@@ -105,6 +105,21 @@ export default function SeleniumEditorPage() {
   const [sikuliUploading, setSikuliUploading] = useState(false)
   const [sikuliDragOver, setSikuliDragOver] = useState(false)
 
+  // Capture d'écran
+  const [capturing, setCapturing] = useState(false)
+  const [captureDataUrl, setCaptureDataUrl] = useState<string | null>(null)
+  const [captureRegion, setCaptureRegion] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
+  const captureCanvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  // Refs Monaco
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const monacoRef = useRef<typeof monaco | null>(null)
+  const decorationsRef = useRef<string[]>([])
+  const hoverDisposableRef = useRef<monaco.IDisposable | null>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sikuliDataUrlCache = useRef<Map<string, string>>(new Map())
+
   const loadTree = useCallback(async () => {
     setLoading(true)
     try {
@@ -116,6 +131,102 @@ export default function SeleniumEditorPage() {
   }, [])
 
   useEffect(() => { loadTree() }, [loadTree])
+
+  // Cleanup Monaco hover provider au unmount
+  useEffect(() => {
+    return () => {
+      hoverDisposableRef.current?.dispose()
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
+
+  function updateDecorations(editor: monaco.editor.IStandaloneCodeEditor, monacoInstance: typeof monaco) {
+    const model = editor.getModel()
+    if (!model) return
+    const pattern = /"([^"]+\.(?:png|jpg|jpeg))"/gi
+    const newDecorations: monaco.editor.IModelDeltaDecoration[] = []
+    const lineCount = model.getLineCount()
+    for (let lineNum = 1; lineNum <= lineCount; lineNum++) {
+      const line = model.getLineContent(lineNum)
+      let match: RegExpExecArray | null
+      pattern.lastIndex = 0
+      while ((match = pattern.exec(line)) !== null) {
+        const endCol = match.index + match[0].length + 1
+        newDecorations.push({
+          range: new monacoInstance.Range(lineNum, endCol, lineNum, endCol),
+          options: {
+            after: { content: ' 🖼', inlineClassName: 'sikuli-img-hint' },
+          },
+        })
+      }
+    }
+    decorationsRef.current = editor.deltaDecorations(decorationsRef.current, newDecorations)
+  }
+
+  function handleEditorMount(editor: monaco.editor.IStandaloneCodeEditor, monacoInstance: typeof monaco) {
+    editorRef.current = editor
+    monacoRef.current = monacoInstance
+
+    // Hover provider pour afficher les images PNG au survol
+    // Monaco sanitise les src des <img> → on convertit en data URI base64
+    hoverDisposableRef.current?.dispose()
+    hoverDisposableRef.current = monacoInstance.languages.registerHoverProvider('java', {
+      async provideHover(model, position) {
+        const line = model.getLineContent(position.lineNumber)
+        const pattern = /"([^"]+\.(?:png|jpg|jpeg))"/gi
+        let match: RegExpExecArray | null
+        while ((match = pattern.exec(line)) !== null) {
+          const startCol = match.index + 2
+          const endCol = match.index + match[0].length
+          if (position.column >= startCol && position.column <= endCol) {
+            const imgName = match[1]
+
+            // Récupérer depuis le cache ou fetcher en base64
+            let dataUrl = sikuliDataUrlCache.current.get(imgName)
+            if (!dataUrl) {
+              try {
+                const res = await fetch(getSikuliImageUrl(imgName))
+                if (res.ok) {
+                  const blob = await res.blob()
+                  dataUrl = await new Promise<string>((resolve) => {
+                    const reader = new FileReader()
+                    reader.onloadend = () => resolve(reader.result as string)
+                    reader.readAsDataURL(blob)
+                  })
+                  sikuliDataUrlCache.current.set(imgName, dataUrl)
+                }
+              } catch {
+                // image non trouvée, on n'affiche pas
+              }
+            }
+
+            if (!dataUrl) return null
+            return {
+              range: new monacoInstance.Range(position.lineNumber, startCol, position.lineNumber, endCol),
+              contents: [
+                { value: `**${imgName}**` },
+                {
+                  value: `<img src="${dataUrl}" style="max-height:150px;max-width:250px;border-radius:4px;" />`,
+                  isTrusted: true,
+                  supportHtml: true,
+                },
+              ],
+            }
+          }
+        }
+        return null
+      },
+    })
+
+    // Décorations initiales + abonnement aux changements
+    updateDecorations(editor, monacoInstance)
+    editor.onDidChangeModelContent(() => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => {
+        updateDecorations(editor, monacoInstance)
+      }, 500)
+    })
+  }
 
   async function handleSelect(path: string) {
     if (dirty && !confirm('Unsaved changes will be lost. Continue?')) return
@@ -255,13 +366,118 @@ export default function SeleniumEditorPage() {
     navigator.clipboard.writeText(name)
   }
 
+  // ── Capture d'écran ──────────────────────────────────────────────
+  async function handleCapture() {
+    if (!sikuliOpen) {
+      setSikuliOpen(true)
+      await loadSikuliImages()
+    }
+    setCapturing(true)
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+      const video = document.createElement('video')
+      video.srcObject = stream
+      await video.play()
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(video, 0, 0)
+      stream.getTracks().forEach((t) => t.stop())
+      captureCanvasRef.current = canvas
+      setCaptureDataUrl(canvas.toDataURL('image/png'))
+      setCaptureRegion(null)
+      setDragStart(null)
+    } catch {
+      // L'utilisateur a annulé ou refusé la capture
+    } finally {
+      setCapturing(false)
+    }
+  }
+
+  function handleOverlayMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    setDragStart({ x: e.clientX, y: e.clientY })
+    setCaptureRegion(null)
+  }
+
+  function handleOverlayMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (!dragStart) return
+    const x = Math.min(e.clientX, dragStart.x)
+    const y = Math.min(e.clientY, dragStart.y)
+    const w = Math.abs(e.clientX - dragStart.x)
+    const h = Math.abs(e.clientY - dragStart.y)
+    setCaptureRegion({ x, y, w, h })
+  }
+
+  function handleOverlayMouseUp() {
+    setDragStart(null)
+  }
+
+  async function handleConfirmCapture() {
+    if (!captureRegion || !captureCanvasRef.current) return
+    const srcCanvas = captureCanvasRef.current
+    const scaleX = srcCanvas.width / window.innerWidth
+    const scaleY = srcCanvas.height / window.innerHeight
+
+    const crop = document.createElement('canvas')
+    crop.width = Math.round(captureRegion.w * scaleX)
+    crop.height = Math.round(captureRegion.h * scaleY)
+    const ctx = crop.getContext('2d')!
+    ctx.drawImage(
+      srcCanvas,
+      Math.round(captureRegion.x * scaleX),
+      Math.round(captureRegion.y * scaleY),
+      crop.width,
+      crop.height,
+      0, 0, crop.width, crop.height,
+    )
+
+    crop.toBlob(async (blob) => {
+      if (!blob) return
+      const now = new Date()
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const name = `capture_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.png`
+      const file = new File([blob], name, { type: 'image/png' })
+
+      setSikuliUploading(true)
+      try {
+        await uploadSikuliImage(file)
+        await loadSikuliImages()
+      } finally {
+        setSikuliUploading(false)
+      }
+
+      // Insérer le nom au curseur Monaco
+      if (editorRef.current && monacoRef.current) {
+        const editor = editorRef.current
+        const monacoInstance = monacoRef.current
+        const pos = editor.getPosition()
+        if (pos) {
+          editor.executeEdits('capture-insert', [{
+            range: new monacoInstance.Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column),
+            text: `"${name}"`,
+          }])
+        }
+      }
+
+      setCaptureDataUrl(null)
+      setCaptureRegion(null)
+    }, 'image/png')
+  }
+
+  function handleCancelCapture() {
+    setCaptureDataUrl(null)
+    setCaptureRegion(null)
+    setDragStart(null)
+  }
+
   const isBaseScript = selectedPath === 'BaseSeleniumScript.java'
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 3rem)', gap: '1rem' }}>
       <div style={{ width: '250px', overflowY: 'auto', flexShrink: 0 }}>
         <div className="flex-row" style={{ marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-          <h2 style={{ fontSize: '1.1rem', color: '#fff' }}>Selenium Scripts</h2>
+          <h2 style={{ fontSize: '1.1rem', color: 'var(--text-heading)' }}>Selenium Scripts</h2>
           <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
             onClick={() => setShowNewFile(!showNewFile)}>+ New</button>
           <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
@@ -292,13 +508,24 @@ export default function SeleniumEditorPage() {
         )}
 
         {/* SikuliLite Images Section */}
-        <div style={{ marginTop: '1rem', borderTop: '1px solid #0f3460', paddingTop: '0.5rem' }}>
-          <div
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#a0a0b8', fontSize: '0.85rem', fontWeight: 600 }}
-            onClick={handleSikuliToggle}
-          >
-            <span style={{ transform: sikuliOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block' }}>&#9654;</span>
-            SikuliLite Images
+        <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.3rem' }}>
+            <div
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600, flex: 1 }}
+              onClick={handleSikuliToggle}
+            >
+              <span style={{ transform: sikuliOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block' }}>&#9654;</span>
+              SikuliLite Images
+            </div>
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', flexShrink: 0 }}
+              onClick={handleCapture}
+              disabled={capturing}
+              title="Capturer une région de l'écran"
+            >
+              {capturing ? '⏳' : '📷'}
+            </button>
           </div>
 
           {sikuliOpen && (
@@ -310,14 +537,14 @@ export default function SeleniumEditorPage() {
                 onDrop={(e) => { e.preventDefault(); setSikuliDragOver(false); handleSikuliUpload(e.dataTransfer.files) }}
                 onClick={() => document.getElementById('sikuli-file-input')?.click()}
                 style={{
-                  border: `2px dashed ${sikuliDragOver ? '#e94560' : '#0f3460'}`,
+                  border: `2px dashed ${sikuliDragOver ? 'var(--accent)' : 'var(--border-color)'}`,
                   borderRadius: '4px',
                   padding: '0.5rem',
                   textAlign: 'center',
                   cursor: 'pointer',
                   fontSize: '0.75rem',
-                  color: sikuliDragOver ? '#e94560' : '#a0a0b8',
-                  background: sikuliDragOver ? '#0f346020' : 'transparent',
+                  color: sikuliDragOver ? 'var(--accent)' : 'var(--text-secondary)',
+                  background: sikuliDragOver ? 'var(--bg-hover)' : 'transparent',
                   transition: 'all 0.2s',
                   marginBottom: '0.4rem',
                 }}
@@ -334,9 +561,9 @@ export default function SeleniumEditorPage() {
               </div>
 
               {sikuliLoading ? (
-                <div style={{ fontSize: '0.75rem', color: '#a0a0b8' }}>Loading...</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Loading...</div>
               ) : sikuliImages.length === 0 ? (
-                <div style={{ fontSize: '0.75rem', color: '#a0a0b8' }}>No images yet</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>No images yet</div>
               ) : (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {sikuliImages.map((img) => (
@@ -344,9 +571,9 @@ export default function SeleniumEditorPage() {
                       <img
                         src={getSikuliImageUrl(img.name)}
                         alt={img.name}
-                        style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: '2px', border: '1px solid #0f3460', flexShrink: 0 }}
+                        style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: '2px', border: '1px solid var(--text-secondary)', background: '#fff', flexShrink: 0 }}
                       />
-                      <span style={{ flex: 1, color: '#e0e0e0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={img.name}>
+                      <span style={{ flex: 1, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={img.name}>
                         {img.name}
                       </span>
                       <button
@@ -375,7 +602,7 @@ export default function SeleniumEditorPage() {
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div className="flex-row" style={{ marginBottom: '0.5rem' }}>
-          <span style={{ flex: 1, color: '#a0a0b8' }}>
+          <span style={{ flex: 1, color: 'var(--text-secondary)' }}>
             {selectedPath || 'Select a file'}
             {dirty && ' *'}
             {isBaseScript && ' (read-only)'}
@@ -412,12 +639,13 @@ export default function SeleniumEditorPage() {
           </div>
         )}
 
-        <div style={{ flex: 1, border: '1px solid #0f3460', borderRadius: '4px', overflow: 'hidden' }}>
+        <div style={{ flex: 1, border: '1px solid var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
           <Editor
             language="java"
             theme="vs-dark"
             value={content}
             onChange={(v) => { if (!isBaseScript) { setContent(v || ''); setDirty(true) } }}
+            onMount={handleEditorMount}
             options={{
               minimap: { enabled: true },
               fontSize: 14,
@@ -427,6 +655,74 @@ export default function SeleniumEditorPage() {
           />
         </div>
       </div>
+
+      {/* Overlay de sélection de région pour la capture */}
+      {captureDataUrl && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundImage: `url(${captureDataUrl})`,
+            backgroundSize: '100% 100%',
+            cursor: 'crosshair',
+            userSelect: 'none',
+          }}
+          onMouseDown={handleOverlayMouseDown}
+          onMouseMove={handleOverlayMouseMove}
+          onMouseUp={handleOverlayMouseUp}
+        >
+          {/* Rectangle de sélection */}
+          {captureRegion && captureRegion.w > 2 && captureRegion.h > 2 && (
+            <div
+              style={{
+                position: 'absolute',
+                left: captureRegion.x,
+                top: captureRegion.y,
+                width: captureRegion.w,
+                height: captureRegion.h,
+                border: '2px solid #e94560',
+                background: 'rgba(233, 69, 96, 0.1)',
+                pointerEvents: 'none',
+                boxSizing: 'border-box',
+              }}
+            />
+          )}
+
+          {/* Barre de boutons en bas */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '1.5rem',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              gap: '1rem',
+              background: 'var(--card-bg)',
+              padding: '0.6rem 1.2rem',
+              borderRadius: '8px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', alignSelf: 'center' }}>
+              {captureRegion && captureRegion.w > 2
+                ? `${Math.round(captureRegion.w)} × ${Math.round(captureRegion.h)} px`
+                : 'Dessinez une région'}
+            </span>
+            <button
+              className="btn btn-primary"
+              disabled={!captureRegion || captureRegion.w < 5 || captureRegion.h < 5}
+              onClick={handleConfirmCapture}
+            >
+              Confirmer
+            </button>
+            <button className="btn btn-secondary" onClick={handleCancelCapture}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
 
       {renameModal && (
         <div className="modal-overlay" onClick={() => setRenameModal(null)}>
@@ -480,26 +776,26 @@ export default function SeleniumEditorPage() {
                     style={{
                       padding: '0.6rem',
                       borderRadius: '6px',
-                      border: selectedTemplate === t.id ? '2px solid #e94560' : '1px solid #0f3460',
-                      background: selectedTemplate === t.id ? '#0f346040' : '#1a1a2e',
+                      border: selectedTemplate === t.id ? '2px solid var(--accent)' : '1px solid var(--border-color)',
+                      background: selectedTemplate === t.id ? 'var(--bg-hover)' : 'var(--bg-primary)',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                     }}>
-                    <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.85rem' }}>{t.name}</div>
-                    <div style={{ color: '#a0a0b8', fontSize: '0.75rem', marginTop: '0.2rem' }}>{t.description}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-heading)', fontSize: '0.85rem' }}>{t.name}</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.2rem' }}>{t.description}</div>
                   </div>
                 ))}
               </div>
 
               <div>
-                <label style={{ color: '#a0a0b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Class Name</label>
+                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Class Name</label>
                 <input type="text" placeholder="MySeleniumScript" value={templateFileName}
                   onChange={(e) => setTemplateFileName(e.target.value)}
                   style={{ width: '100%' }} />
               </div>
 
               <div>
-                <label style={{ color: '#a0a0b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Base URL</label>
+                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Base URL</label>
                 <input type="text" value={templateBaseUrl}
                   onChange={(e) => setTemplateBaseUrl(e.target.value)}
                   style={{ width: '100%' }} />
