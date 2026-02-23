@@ -155,7 +155,11 @@ public class SikuliLite {
     }
 
     private Mat loadTemplate(String imageName) {
-        File file = imagesDir.resolve(imageName).toFile();
+        Path resolved = imagesDir.resolve(imageName).normalize();
+        if (!resolved.startsWith(imagesDir.toAbsolutePath().normalize())) {
+            throw new RuntimeException("SikuliLite: invalid image path: " + imageName);
+        }
+        File file = resolved.toFile();
         if (!file.exists()) {
             throw new RuntimeException("SikuliLite: image not found: " + file.getAbsolutePath());
         }

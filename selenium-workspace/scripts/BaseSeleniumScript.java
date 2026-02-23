@@ -8,6 +8,7 @@ import java.util.*;
 public abstract class BaseSeleniumScript {
     protected WebDriver driver;
     protected SikuliLite sikuli;
+    protected TesseractOCR ocr;
     protected Map<String, String> csvRow = Map.of();
     protected int browserIndex;
     protected int iteration;
@@ -15,6 +16,7 @@ public abstract class BaseSeleniumScript {
 
     public void setDriver(WebDriver driver) { this.driver = driver; }
     public void setSikuli(SikuliLite sikuli) { this.sikuli = sikuli; }
+    public void setOcr(TesseractOCR ocr) { this.ocr = ocr; }
     public void setCsvRow(Map<String, String> csvRow) { this.csvRow = csvRow; }
     public void setBrowserIndex(int browserIndex) { this.browserIndex = browserIndex; }
     public void setIteration(int iteration) { this.iteration = iteration; }

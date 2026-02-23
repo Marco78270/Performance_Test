@@ -338,6 +338,20 @@ public class SeleniumExecutionService {
                         log.warn("Failed to inject SikuliLite: {}", e.getMessage());
                     }
 
+                    // Inject TesseractOCR if available
+                    try {
+                        Class<?> ocrClass = classLoader.loadClass("scripts.TesseractOCR");
+                        Object ocrInstance = ocrClass
+                            .getConstructor(WebDriver.class, Path.class)
+                            .newInstance(driverRef, seleniumWorkspace);
+                        var setOcrMethod = scriptClazz.getMethod("setOcr", ocrClass);
+                        setOcrMethod.invoke(scriptInstance, ocrInstance);
+                    } catch (ClassNotFoundException e) {
+                        log.debug("TesseractOCR class not found, skipping injection");
+                    } catch (Exception e) {
+                        log.warn("Failed to inject TesseractOCR: {}", e.getMessage());
+                    }
+
                     try {
                         var executeMethod = scriptClazz.getMethod("execute");
                         executeMethod.invoke(scriptInstance);

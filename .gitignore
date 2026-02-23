@@ -44,3 +44,6 @@ frontend/dist/
 *.db
 backend/src/main/resources/static/
 workspace/target/
+selenium-workspace/screenshots/
+selenium-workspace/tessdata/
+.env*

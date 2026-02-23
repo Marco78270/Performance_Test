@@ -48,5 +48,12 @@
             <artifactId>opencv</artifactId>
             <version>4.9.0-0</version>
         </dependency>
+        <!-- Tess4J : provided car chargé par le classloader Spring Boot (backend) -->
+        <dependency>
+            <groupId>net.sourceforge.tess4j</groupId>
+            <artifactId>tess4j</artifactId>
+            <version>5.13.0</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 </project>
