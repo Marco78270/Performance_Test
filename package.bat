@@ -1,6 +1,9 @@
 @echo off
 setlocal EnableDelayedExpansion
 
+REM Se placer dans le dossier du .bat, quelle que soit la façon dont il est lancé
+cd /d "%~dp0"
+
 echo ==========================================================
 echo   GatlingWeb - Build package natif (100%% offline-ready)
 echo ==========================================================
