@@ -9,7 +9,7 @@ import com.gatlingweb.selenium.entity.SeleniumTestRun;
 import com.gatlingweb.selenium.repository.SeleniumBrowserResultRepository;
 import com.gatlingweb.selenium.repository.SeleniumTestRunRepository;
 import com.gatlingweb.service.MetricsPersistenceService;
-import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
+import com.itextpdf.html2pdf.HtmlConverter;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -375,9 +375,7 @@ public class SeleniumPdfExportService {
     // --- Helpers ---
 
     private String htmlHead(String title) {
-        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n" +
-            "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head><title>" + esc(title) + "</title>\n" +
+        return "<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\"/><title>" + esc(title) + "</title>\n" +
             "<style>\n" +
             "body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #333; margin: 25px; }\n" +
             "h1 { font-size: 20px; color: #1a1a2e; border-bottom: 2px solid #e94560; padding-bottom: 5px; }\n" +
@@ -453,11 +451,7 @@ public class SeleniumPdfExportService {
 
     private byte[] convertHtmlToPdf(String html) {
         try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
-            PdfRendererBuilder builder = new PdfRendererBuilder();
-            builder.useFastMode();
-            builder.withHtmlContent(html, null);
-            builder.toStream(os);
-            builder.run();
+            HtmlConverter.convertToPdf(html, os);
             return os.toByteArray();
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate PDF", e);
