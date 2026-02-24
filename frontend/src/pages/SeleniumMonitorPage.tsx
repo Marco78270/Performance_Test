@@ -92,7 +92,7 @@ function ScreenshotLightbox({ src, onClose }: { src: string; onClose: () => void
 
   return (
     <div
-      onClick={(e) => { if (e.target === e.currentTarget) { isZoomed ? setZoomIndex(0) : onClose() } }}
+      onClick={(e) => { if (e.target === e.currentTarget) { if (isZoomed) { setZoomIndex(0) } else { onClose() } } }}
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
         background: 'rgba(0,0,0,0.9)', zIndex: 9999,
@@ -419,7 +419,7 @@ export default function SeleniumMonitorPage() {
   const { metrics: liveMetrics } = useSeleniumMetricsWebSocket(testRunId)
   const { metrics: liveInfraMetrics, connected: infraConnected } = useInfraMetricsWebSocket(testRunId)
 
-  const onStatusChange = useCallback((_status: string) => {
+  const onStatusChange = useCallback(() => {
     if (testRunId) {
       fetchSeleniumTest(testRunId).then(setTestRun).catch(() => {})
       fetchSeleniumResults(testRunId).then(setHistoricalResults).catch(() => {})
@@ -484,7 +484,7 @@ export default function SeleniumMonitorPage() {
   }, [testRun?.status, historicalInfra, liveInfraMetrics])
 
   const smoothedMetrics = useMemo(() => smoothMetrics(metrics, 3), [metrics])
-  const startTs = metrics[0]?.timestamp || Date.now()
+  const startTs = metrics[0]?.timestamp ?? 0
 
   const chartData = useMemo(() => {
     const mapped = smoothedMetrics.map((m) => ({

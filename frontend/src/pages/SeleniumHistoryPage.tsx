@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   fetchSeleniumTests, deleteSeleniumTest, cancelSeleniumTest,
@@ -27,6 +27,22 @@ function formatDuration(start: number | null, end: number | null): string {
   if (min < 60) return `${min}m ${sec % 60}s`
   const hr = Math.floor(min / 60)
   return `${hr}h ${min % 60}m`
+}
+
+interface SortHeaderProps {
+  field: SortField
+  sortBy: SortField
+  sortDir: SortDir
+  onSort: (field: SortField) => void
+  children: React.ReactNode
+}
+
+function SortHeader({ field, sortBy, sortDir, onSort, children }: SortHeaderProps) {
+  return (
+    <th onClick={() => onSort(field)} style={{ cursor: 'pointer', userSelect: 'none' }}>
+      {children} {sortBy === field && (sortDir === 'asc' ? '\u25B2' : '\u25BC')}
+    </th>
+  )
 }
 
 function groupByVersion(tests: SeleniumTestRun[]): { version: string; tests: SeleniumTestRun[] }[] {
@@ -214,12 +230,6 @@ export default function SeleniumHistoryPage() {
         return l.toLowerCase().includes(addingLabel.value.toLowerCase()) && !(run?.labels ?? []).includes(l)
       })
     : []
-
-  const SortHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <th onClick={() => handleSort(field)} style={{ cursor: 'pointer', userSelect: 'none' }}>
-      {children} {sortBy === field && (sortDir === 'asc' ? '\u25B2' : '\u25BC')}
-    </th>
-  )
 
   function renderTestRow(run: SeleniumTestRun, showVersion: boolean) {
     const labels = run.labels ?? []
@@ -448,14 +458,14 @@ export default function SeleniumHistoryPage() {
                 <thead>
                   <tr>
                     <th style={{ width: '30px' }}></th>
-                    <SortHeader field="scriptClass">Script</SortHeader>
+                    <SortHeader field="scriptClass" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Script</SortHeader>
                     <th>Browser</th>
                     <th>Instances</th>
                     <th>Version</th>
                     <th>Labels</th>
-                    <SortHeader field="startTime">Date</SortHeader>
+                    <SortHeader field="startTime" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Date</SortHeader>
                     <th>Duration</th>
-                    <SortHeader field="status">Status</SortHeader>
+                    <SortHeader field="status" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Status</SortHeader>
                     <th>Passed/Failed</th>
                     <th>Mean Step</th>
                     <th>Actions</th>
@@ -547,13 +557,13 @@ export default function SeleniumHistoryPage() {
                           <thead>
                             <tr>
                               <th style={{ width: '30px' }}></th>
-                              <SortHeader field="scriptClass">Script</SortHeader>
+                              <SortHeader field="scriptClass" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Script</SortHeader>
                               <th>Browser</th>
                               <th>Instances</th>
                               <th>Labels</th>
-                              <SortHeader field="startTime">Date</SortHeader>
+                              <SortHeader field="startTime" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Date</SortHeader>
                               <th>Duration</th>
-                              <SortHeader field="status">Status</SortHeader>
+                              <SortHeader field="status" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Status</SortHeader>
                               <th>Passed/Failed</th>
                               <th>Mean Step</th>
                               <th>Actions</th>

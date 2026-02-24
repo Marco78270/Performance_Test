@@ -51,7 +51,7 @@ export default function InfraMetricsPanel({ metrics, connected }: InfraMetricsPa
     return Array.from(map.entries()).map(([id, info]) => ({ id, ...info }))
   }, [metrics])
 
-  const startTs = metrics[0]?.timestamp || Date.now()
+  const startTs = metrics[0]?.timestamp ?? 0
 
   const chartDataByServer = useMemo(() => {
     const grouped = new Map<number, InfraMetricsSnapshot[]>()

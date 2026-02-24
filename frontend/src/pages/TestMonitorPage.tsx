@@ -160,7 +160,7 @@ export default function TestMonitorPage() {
 
   // Lissage des données avec moyenne mobile sur 3 points
   const smoothedMetrics = useMemo(() => smoothData(metrics, 3), [metrics])
-  const startTs = metrics[0]?.timestamp || Date.now()
+  const startTs = metrics[0]?.timestamp ?? 0
 
   const chartData = useMemo(() => {
     const mapped = smoothedMetrics.map((m) => ({

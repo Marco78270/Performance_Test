@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchTestRuns, updateTestVersion, updateTestLabels, deleteTestRun, cancelQueuedTest, fetchAllLabels, exportCsv, exportJson, type TestRun, type Page } from '../api/testRunApi'
 import { getLabelColor } from '../utils/labelColors'
@@ -7,6 +7,22 @@ type SortField = 'startTime' | 'simulationClass' | 'status' | 'totalRequests' | 
 type SortDir = 'asc' | 'desc'
 type StatusFilter = '' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'RUNNING' | 'QUEUED'
 type ViewMode = 'list' | 'folders'
+
+interface SortHeaderProps {
+  field: SortField
+  sortBy: SortField
+  sortDir: SortDir
+  onSort: (field: SortField) => void
+  children: React.ReactNode
+}
+
+function SortHeader({ field, sortBy, sortDir, onSort, children }: SortHeaderProps) {
+  return (
+    <th onClick={() => onSort(field)} style={{ cursor: 'pointer', userSelect: 'none' }}>
+      {children} {sortBy === field && (sortDir === 'asc' ? '\u25B2' : '\u25BC')}
+    </th>
+  )
+}
 
 function groupByVersion(tests: TestRun[]): { version: string; tests: TestRun[] }[] {
   const map = new Map<string, TestRun[]>()
@@ -197,12 +213,6 @@ export default function HistoryPage() {
         !((viewMode === 'folders' ? folderData : page?.content)?.find(r => r.id === addingLabel.id)?.labels || []).includes(l)
       )
     : []
-
-  const SortHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <th onClick={() => handleSort(field)} style={{ cursor: 'pointer', userSelect: 'none' }}>
-      {children} {sortBy === field && (sortDir === 'asc' ? '\u25B2' : '\u25BC')}
-    </th>
-  )
 
   function renderTestRow(run: TestRun, showVersion: boolean) {
     return (
@@ -426,16 +436,16 @@ export default function HistoryPage() {
                 <thead>
                   <tr>
                     <th style={{ width: '30px' }}></th>
-                    <SortHeader field="simulationClass">Simulation</SortHeader>
+                    <SortHeader field="simulationClass" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Simulation</SortHeader>
                     <th>Version</th>
                     <th>Labels</th>
-                    <SortHeader field="startTime">Date</SortHeader>
+                    <SortHeader field="startTime" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Date</SortHeader>
                     <th>Duration</th>
-                    <SortHeader field="status">Status</SortHeader>
+                    <SortHeader field="status" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Status</SortHeader>
                     <th>Verdict</th>
-                    <SortHeader field="totalRequests">Requests</SortHeader>
+                    <SortHeader field="totalRequests" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Requests</SortHeader>
                     <th>Errors</th>
-                    <SortHeader field="meanResponseTime">Mean RT</SortHeader>
+                    <SortHeader field="meanResponseTime" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Mean RT</SortHeader>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -525,15 +535,15 @@ export default function HistoryPage() {
                           <thead>
                             <tr>
                               <th style={{ width: '30px' }}></th>
-                              <SortHeader field="simulationClass">Simulation</SortHeader>
+                              <SortHeader field="simulationClass" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Simulation</SortHeader>
                               <th>Labels</th>
-                              <SortHeader field="startTime">Date</SortHeader>
+                              <SortHeader field="startTime" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Date</SortHeader>
                               <th>Duration</th>
-                              <SortHeader field="status">Status</SortHeader>
+                              <SortHeader field="status" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Status</SortHeader>
                               <th>Verdict</th>
-                              <SortHeader field="totalRequests">Requests</SortHeader>
+                              <SortHeader field="totalRequests" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Requests</SortHeader>
                               <th>Errors</th>
-                              <SortHeader field="meanResponseTime">Mean RT</SortHeader>
+                              <SortHeader field="meanResponseTime" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Mean RT</SortHeader>
                               <th>Actions</th>
                             </tr>
                           </thead>
