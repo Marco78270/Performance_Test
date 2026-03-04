@@ -11,6 +11,7 @@ import {
   type SeleniumTemplate, type SikuliImage,
 } from '../api/seleniumApi'
 import { type SimulationFile } from '../api/simulationApi'
+import { Button, Modal, Spinner } from '../components/ui'
 
 function FileTree({
   files, selectedPath, onSelect, onRename, onCreateDir,
@@ -27,13 +28,12 @@ function FileTree({
         <li key={f.path}>
           {f.directory ? (
             <details open>
-              <summary style={{ cursor: 'pointer', padding: '0.2rem 0', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <summary style={{ cursor: 'pointer', padding: '0.2rem 0', color: 'var(--color-text-2)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 <span style={{ flex: 1 }}>{f.name}</span>
                 <button
-                  className="btn btn-secondary"
-                  style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem' }}
                   onClick={(e) => { e.stopPropagation(); onCreateDir(f.path) }}
                   title="New folder"
+                  style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'transparent', border: '1px solid var(--color-border)', borderRadius: '3px', cursor: 'pointer', color: 'var(--color-text-2)' }}
                 >
                   +
                 </button>
@@ -48,8 +48,8 @@ function FileTree({
                 cursor: 'pointer',
                 padding: '0.2rem 0.4rem',
                 borderRadius: '3px',
-                background: f.path === selectedPath ? 'var(--bg-hover)' : 'transparent',
-                color: f.path === selectedPath ? 'var(--accent)' : 'var(--text-primary)',
+                background: f.path === selectedPath ? 'var(--color-primary-bg)' : 'transparent',
+                color: f.path === selectedPath ? 'var(--color-primary)' : 'var(--color-text)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.3rem',
@@ -58,10 +58,9 @@ function FileTree({
               <span style={{ flex: 1 }} onClick={() => onSelect(f.path)}>{f.name}</span>
               {f.name !== 'BaseSeleniumScript.java' && (
                 <button
-                  className="btn btn-secondary"
-                  style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', opacity: 0.6 }}
                   onClick={(e) => { e.stopPropagation(); onRename(f.path) }}
                   title="Rename"
+                  style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', opacity: 0.6, background: 'transparent', border: '1px solid var(--color-border)', borderRadius: '3px', cursor: 'pointer', color: 'var(--color-text-2)' }}
                 >
                   ✏
                 </button>
@@ -477,26 +476,21 @@ export default function SeleniumEditorPage() {
     <div style={{ display: 'flex', height: 'calc(100vh - 3rem)', gap: '1rem' }}>
       <div style={{ width: '250px', overflowY: 'auto', flexShrink: 0 }}>
         <div className="flex-row" style={{ marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-          <h2 style={{ fontSize: '1.1rem', color: 'var(--text-heading)' }}>Selenium Scripts</h2>
-          <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
-            onClick={() => setShowNewFile(!showNewFile)}>+ New</button>
-          <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
-            onClick={() => setNewDirModal({ parentPath: '', name: '' })}>+ Dir</button>
-          <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
-            onClick={openTemplateModal}>Template</button>
+          <h2 style={{ fontSize: '1.1rem', color: 'var(--color-text)' }}>Selenium Scripts</h2>
+          <Button variant="secondary" size="sm" onClick={() => setShowNewFile(!showNewFile)}>+ New</Button>
+          <Button variant="secondary" size="sm" onClick={() => setNewDirModal({ parentPath: '', name: '' })}>+ Dir</Button>
+          <Button variant="primary" size="sm" onClick={openTemplateModal}>Template</Button>
         </div>
         {showNewFile && (
           <div style={{ marginBottom: '0.5rem' }}>
             <input type="text" placeholder="MyScript.java" value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
               style={{ width: '100%', marginBottom: '0.3rem' }} />
-            <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={handleCreate}>
-              Create
-            </button>
+            <Button variant="primary" size="sm" onClick={handleCreate}>Create</Button>
           </div>
         )}
         {loading ? (
-          <div className="loading-spinner">Loading...</div>
+          <Spinner />
         ) : (
           <FileTree
             files={files}
@@ -508,24 +502,18 @@ export default function SeleniumEditorPage() {
         )}
 
         {/* SikuliLite Images Section */}
-        <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem' }}>
+        <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.3rem' }}>
             <div
-              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600, flex: 1 }}
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-text-2)', fontSize: '0.85rem', fontWeight: 600, flex: 1 }}
               onClick={handleSikuliToggle}
             >
               <span style={{ transform: sikuliOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block' }}>&#9654;</span>
               SikuliLite Images
             </div>
-            <button
-              className="btn btn-secondary"
-              style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', flexShrink: 0 }}
-              onClick={handleCapture}
-              disabled={capturing}
-              title="Capturer une région de l'écran"
-            >
+            <Button variant="secondary" size="sm" onClick={handleCapture} disabled={capturing} title="Capturer une région de l'écran">
               {capturing ? '⏳' : '📷'}
-            </button>
+            </Button>
           </div>
 
           {sikuliOpen && (
@@ -537,14 +525,14 @@ export default function SeleniumEditorPage() {
                 onDrop={(e) => { e.preventDefault(); setSikuliDragOver(false); handleSikuliUpload(e.dataTransfer.files) }}
                 onClick={() => document.getElementById('sikuli-file-input')?.click()}
                 style={{
-                  border: `2px dashed ${sikuliDragOver ? 'var(--accent)' : 'var(--border-color)'}`,
+                  border: `2px dashed ${sikuliDragOver ? 'var(--color-primary)' : 'var(--color-border)'}`,
                   borderRadius: '4px',
                   padding: '0.5rem',
                   textAlign: 'center',
                   cursor: 'pointer',
                   fontSize: '0.75rem',
-                  color: sikuliDragOver ? 'var(--accent)' : 'var(--text-secondary)',
-                  background: sikuliDragOver ? 'var(--bg-hover)' : 'transparent',
+                  color: sikuliDragOver ? 'var(--color-primary)' : 'var(--color-text-2)',
+                  background: sikuliDragOver ? 'var(--color-primary-bg)' : 'transparent',
                   transition: 'all 0.2s',
                   marginBottom: '0.4rem',
                 }}
@@ -571,27 +559,13 @@ export default function SeleniumEditorPage() {
                       <img
                         src={getSikuliImageUrl(img.name)}
                         alt={img.name}
-                        style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: '2px', border: '1px solid var(--text-secondary)', background: '#fff', flexShrink: 0 }}
+                        style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: '2px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', flexShrink: 0 }}
                       />
-                      <span style={{ flex: 1, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={img.name}>
+                      <span style={{ flex: 1, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={img.name}>
                         {img.name}
                       </span>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ fontSize: '0.6rem', padding: '0.1rem 0.25rem' }}
-                        onClick={() => handleSikuliCopy(img.name)}
-                        title="Copy name"
-                      >
-                        CP
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        style={{ fontSize: '0.6rem', padding: '0.1rem 0.25rem' }}
-                        onClick={() => handleSikuliDelete(img.name)}
-                        title="Delete"
-                      >
-                        X
-                      </button>
+                      <Button variant="secondary" size="sm" onClick={() => handleSikuliCopy(img.name)} title="Copy name">CP</Button>
+                      <Button variant="danger" size="sm" onClick={() => handleSikuliDelete(img.name)} title="Delete">X</Button>
                     </li>
                   ))}
                 </ul>
@@ -602,19 +576,19 @@ export default function SeleniumEditorPage() {
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div className="flex-row" style={{ marginBottom: '0.5rem' }}>
-          <span style={{ flex: 1, color: 'var(--text-secondary)' }}>
+          <span style={{ flex: 1, color: 'var(--color-text-2)' }}>
             {selectedPath || 'Select a file'}
             {dirty && ' *'}
             {isBaseScript && ' (read-only)'}
           </span>
-          <button className="btn btn-secondary" onClick={handleCompile} disabled={compiling}>
+          <Button variant="secondary" size="sm" onClick={handleCompile} disabled={compiling}>
             {compiling ? 'Compiling...' : 'Compile'}
-          </button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={!dirty || saving || isBaseScript}>
+          </Button>
+          <Button variant="primary" size="sm" onClick={handleSave} disabled={!dirty || saving || isBaseScript}>
             {saving ? 'Saving...' : 'Save'}
-          </button>
+          </Button>
           {selectedPath && !isBaseScript && (
-            <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
+            <Button variant="danger" size="sm" onClick={handleDelete}>Delete</Button>
           )}
         </div>
 
@@ -639,7 +613,7 @@ export default function SeleniumEditorPage() {
           </div>
         )}
 
-        <div style={{ flex: 1, border: '1px solid var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+        <div style={{ flex: 1, border: '1px solid var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
           <Editor
             language="java"
             theme="vs-dark"
@@ -698,7 +672,7 @@ export default function SeleniumEditorPage() {
               transform: 'translateX(-50%)',
               display: 'flex',
               gap: '1rem',
-              background: 'var(--card-bg)',
+              background: 'var(--color-surface)',
               padding: '0.6rem 1.2rem',
               borderRadius: '8px',
               boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
@@ -710,109 +684,62 @@ export default function SeleniumEditorPage() {
                 ? `${Math.round(captureRegion.w)} × ${Math.round(captureRegion.h)} px`
                 : 'Dessinez une région'}
             </span>
-            <button
-              className="btn btn-primary"
-              disabled={!captureRegion || captureRegion.w < 5 || captureRegion.h < 5}
-              onClick={handleConfirmCapture}
-            >
+            <Button variant="primary" size="sm" disabled={!captureRegion || captureRegion.w < 5 || captureRegion.h < 5} onClick={handleConfirmCapture}>
               Confirmer
-            </button>
-            <button className="btn btn-secondary" onClick={handleCancelCapture}>
-              Annuler
-            </button>
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleCancelCapture}>Annuler</Button>
           </div>
         </div>
       )}
 
-      {renameModal && (
-        <div className="modal-overlay" onClick={() => setRenameModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Rename file</h3>
-            <input
-              type="text"
-              value={renameModal.newPath}
-              onChange={(e) => setRenameModal({ ...renameModal, newPath: e.target.value })}
-              style={{ width: '100%', marginTop: '0.5rem' }}
-              autoFocus
-            />
-            <div className="flex-row" style={{ marginTop: '1rem', justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => setRenameModal(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleRenameSubmit}>Rename</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal open={!!renameModal} onClose={() => setRenameModal(null)} title="Rename file"
+        footer={<><Button variant="secondary" onClick={() => setRenameModal(null)}>Cancel</Button><Button variant="primary" onClick={handleRenameSubmit}>Rename</Button></>}
+      >
+        {renameModal && (
+          <input type="text" value={renameModal.newPath}
+            onChange={(e) => setRenameModal({ ...renameModal, newPath: e.target.value })}
+            style={{ width: '100%' }} autoFocus />
+        )}
+      </Modal>
 
-      {newDirModal && (
-        <div className="modal-overlay" onClick={() => setNewDirModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Create directory</h3>
-            <input
-              type="text"
-              placeholder="Directory name"
-              value={newDirModal.name}
-              onChange={(e) => setNewDirModal({ ...newDirModal, name: e.target.value })}
-              style={{ width: '100%', marginTop: '0.5rem' }}
-              autoFocus
-            />
-            <div className="flex-row" style={{ marginTop: '1rem', justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => setNewDirModal(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleCreateDirSubmit}>Create</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal open={!!newDirModal} onClose={() => setNewDirModal(null)} title="Create directory"
+        footer={<><Button variant="secondary" onClick={() => setNewDirModal(null)}>Cancel</Button><Button variant="primary" onClick={handleCreateDirSubmit}>Create</Button></>}
+      >
+        {newDirModal && (
+          <input type="text" placeholder="Directory name" value={newDirModal.name}
+            onChange={(e) => setNewDirModal({ ...newDirModal, name: e.target.value })}
+            style={{ width: '100%' }} autoFocus />
+        )}
+      </Modal>
 
-      {templateModal && (
-        <div className="modal-overlay" onClick={() => setTemplateModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ minWidth: '450px', maxWidth: '600px' }}>
-            <h3>New Selenium Script from Template</h3>
-
-            <div style={{ marginTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                {templates.map((t) => (
-                  <div key={t.id}
-                    onClick={() => setSelectedTemplate(t.id)}
-                    style={{
-                      padding: '0.6rem',
-                      borderRadius: '6px',
-                      border: selectedTemplate === t.id ? '2px solid var(--accent)' : '1px solid var(--border-color)',
-                      background: selectedTemplate === t.id ? 'var(--bg-hover)' : 'var(--bg-primary)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-heading)', fontSize: '0.85rem' }}>{t.name}</div>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.2rem' }}>{t.description}</div>
-                  </div>
-                ))}
+      <Modal open={templateModal} onClose={() => setTemplateModal(false)} title="New Selenium Script from Template" size="lg"
+        footer={<><Button variant="secondary" onClick={() => setTemplateModal(false)}>Cancel</Button><Button variant="primary" onClick={handleTemplateCreate} disabled={!selectedTemplate || !templateFileName || templateCreating}>{templateCreating ? 'Creating...' : 'Create'}</Button></>}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+            {templates.map((t) => (
+              <div key={t.id} onClick={() => setSelectedTemplate(t.id)} style={{
+                padding: '0.6rem', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s',
+                border: selectedTemplate === t.id ? `2px solid var(--color-primary)` : '1px solid var(--color-border)',
+                background: selectedTemplate === t.id ? 'var(--color-primary-bg)' : 'var(--color-surface)',
+              }}>
+                <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.85rem' }}>{t.name}</div>
+                <div style={{ color: 'var(--color-text-2)', fontSize: '0.75rem', marginTop: '0.2rem' }}>{t.description}</div>
               </div>
-
-              <div>
-                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Class Name</label>
-                <input type="text" placeholder="MySeleniumScript" value={templateFileName}
-                  onChange={(e) => setTemplateFileName(e.target.value)}
-                  style={{ width: '100%' }} />
-              </div>
-
-              <div>
-                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Base URL</label>
-                <input type="text" value={templateBaseUrl}
-                  onChange={(e) => setTemplateBaseUrl(e.target.value)}
-                  style={{ width: '100%' }} />
-              </div>
-            </div>
-
-            <div className="flex-row" style={{ marginTop: '1rem', justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => setTemplateModal(false)}>Cancel</button>
-              <button className="btn btn-primary"
-                onClick={handleTemplateCreate}
-                disabled={!selectedTemplate || !templateFileName || templateCreating}>
-                {templateCreating ? 'Creating...' : 'Create'}
-              </button>
-            </div>
+            ))}
+          </div>
+          <div>
+            <label style={{ color: 'var(--color-text-2)', fontSize: 'var(--text-sm)', display: 'block', marginBottom: '0.2rem' }}>Class Name</label>
+            <input type="text" placeholder="MySeleniumScript" value={templateFileName}
+              onChange={(e) => setTemplateFileName(e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div>
+            <label style={{ color: 'var(--color-text-2)', fontSize: 'var(--text-sm)', display: 'block', marginBottom: '0.2rem' }}>Base URL</label>
+            <input type="text" value={templateBaseUrl}
+              onChange={(e) => setTemplateBaseUrl(e.target.value)} style={{ width: '100%' }} />
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }
