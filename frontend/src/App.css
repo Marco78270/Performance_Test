@@ -38,52 +38,37 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* App shell */
 .app {
   display: flex;
   height: 100vh;
-}
-
-.sidebar {
-  width: 220px;
-  background: var(--bg-secondary);
-  display: flex;
-  flex-direction: column;
-  padding: 1rem 0;
-  border-right: 1px solid var(--border-color);
-  flex-shrink: 0;
-}
-
-.sidebar-title {
-  font-size: 1.3rem;
-  font-weight: 700;
-  padding: 0 1rem 1rem;
-  color: var(--accent);
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 0.5rem;
-}
-
-.sidebar a {
-  padding: 0.7rem 1rem;
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: all 0.2s;
-}
-
-.sidebar a:hover {
-  background: var(--bg-hover);
-  color: var(--text-heading);
-}
-
-.sidebar a.active {
-  background: var(--bg-hover);
-  color: var(--accent);
-  border-left: 3px solid var(--accent);
+  overflow: hidden;
+  background: var(--color-bg);
 }
 
 .main-content {
   flex: 1;
-  overflow: auto;
-  padding: 1.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--sp-6) var(--sp-8);
+  background: var(--color-bg);
+}
+
+/* App loading */
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: var(--color-bg);
+}
+
+.app-loading__spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
 .page-title {

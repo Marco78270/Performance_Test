@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import LoginForm from './components/LoginForm'
+import { Sidebar } from './components/Sidebar'
 import DashboardPage from './pages/DashboardPage'
 import EditorPage from './pages/EditorPage'
 import HistoryPage from './pages/HistoryPage'
@@ -51,7 +52,11 @@ function App() {
   }
 
   if (checking) {
-    return <div className="login-container"><div className="loading-spinner">Checking authentication...</div></div>
+    return (
+      <div className="app-loading">
+        <div className="app-loading__spinner" />
+      </div>
+    )
   }
 
   if (!authenticated) {
@@ -61,33 +66,12 @@ function App() {
   return (
     <BrowserRouter>
       <div className="app">
-        <nav className="sidebar">
-          <div className="sidebar-title">Gatling Web</div>
-          <div style={{ padding: '0.3rem 0.8rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gatling</div>
-          <NavLink to="/" end>Dashboard</NavLink>
-          <NavLink to="/editor">Editor</NavLink>
-          <NavLink to="/history">History</NavLink>
-          <NavLink to="/recorder">Recorder</NavLink>
-          <NavLink to="/thresholds">Thresholds</NavLink>
-          <NavLink to="/trends">Trends</NavLink>
-          <div style={{ borderTop: '1px solid var(--border-color)', margin: '0.5rem 0.8rem', opacity: 0.5 }} />
-          <div style={{ padding: '0.3rem 0.8rem', color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Selenium</div>
-          <NavLink to="/selenium/editor">Selenium Editor</NavLink>
-          <NavLink to="/selenium/history">Selenium History</NavLink>
-          <NavLink to="/selenium/trends">Selenium Trends</NavLink>
-          <NavLink to="/selenium/config">Configuration</NavLink>
-          <div style={{ borderTop: '1px solid var(--border-color)', margin: '0.5rem 0.8rem', opacity: 0.5 }} />
-          <NavLink to="/scheduler">Scheduler</NavLink>
-          <NavLink to="/servers">Servers</NavLink>
-          <NavLink to="/settings">Settings</NavLink>
-          <div className="sidebar-footer">
-            {appVersion && <span className="app-version">v{appVersion}</span>}
-            <button className="theme-toggle-btn" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-              {theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19'}
-            </button>
-            <button className="logout-btn" onClick={handleLogout}>Logout</button>
-          </div>
-        </nav>
+        <Sidebar
+          appVersion={appVersion}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onLogout={handleLogout}
+        />
         <main className="main-content">
           <ErrorBoundary>
             <Routes>
