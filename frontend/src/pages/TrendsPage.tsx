@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { fetchTrends, fetchCompletedSimulationClasses, type TrendData } from '../api/testRunApi'
+import { Card, PageHeader, Spinner, Select } from '../components/ui'
+import { CHART_COLORS } from '../styles/chartColors'
 
 export default function TrendsPage() {
   const [classes, setClasses] = useState<string[]>([])
@@ -24,7 +26,7 @@ export default function TrendsPage() {
       .finally(() => setLoading(false))
   }, [selected, limit])
 
-  const tooltipStyle = { background: 'var(--tooltip-bg)', border: '1px solid var(--border-color)' }
+  const tooltipStyle = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' }
 
   const chartData = data?.points.map((p, i) => ({
     index: i + 1,
@@ -38,96 +40,109 @@ export default function TrendsPage() {
 
   return (
     <div>
-      <h1 className="page-title">Trends</h1>
+      <PageHeader title="Trends" breadcrumb="Gatling / Tendances" />
 
-      <div className="card" style={{ padding: '0.6rem 1.2rem', marginBottom: '1rem' }}>
+      <Card style={{ marginBottom: '1rem' }}>
         <div className="flex-row">
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Simulation:</span>
-          <select value={selected} onChange={(e) => setSelected(e.target.value)}>
+          <Select
+            label="Simulation"
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            style={{ minWidth: '240px' }}
+          >
             {classes.length === 0 && <option>No completed tests</option>}
             {classes.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Last:</span>
-          <select value={limit} onChange={(e) => setLimit(Number(e.target.value))}>
+          </Select>
+          <Select
+            label="Last"
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}
+          >
             <option value={10}>10 runs</option>
             <option value={20}>20 runs</option>
             <option value={50}>50 runs</option>
-          </select>
+          </Select>
         </div>
-      </div>
+      </Card>
 
       {loading ? (
-        <div className="loading-spinner">Loading...</div>
+        <Spinner label="Chargement..." />
       ) : !data || data.points.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+        <Card style={{ textAlign: 'center', color: 'var(--color-text-2)', padding: '2rem' }}>
           No completed test runs found for this simulation.
-        </div>
+        </Card>
       ) : (
         <>
-          <div className="flex-row-wrap" style={{ marginBottom: '1rem' }}>
-            <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Tests Analyzed</div>
-              <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{data.points.length}</div>
-            </div>
-            <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Threshold Pass Rate</div>
-              <div style={{ fontSize: '1.5rem', color: data.thresholdPassRate >= 80 ? '#27ae60' : '#e94560' }}>
-                {data.thresholdPassRate.toFixed(0)}%
+          <div className="kpi-grid" style={{ marginBottom: '1rem' }}>
+            <div className="ui-kpi">
+              <span className="ui-kpi__label">Tests Analyzed</span>
+              <div className="ui-kpi__value-row">
+                <span className="ui-kpi__value">{data.points.length}</span>
               </div>
             </div>
-            <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Avg p95 RT</div>
-              <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>
-                {(data.points.reduce((s, p) => s + (p.p95ResponseTime ?? 0), 0) / data.points.length).toFixed(0)} ms
+            <div className={`ui-kpi ${data.thresholdPassRate >= 80 ? 'ui-kpi--success' : 'ui-kpi--error'}`}>
+              <span className="ui-kpi__label">Threshold Pass Rate</span>
+              <div className="ui-kpi__value-row">
+                <span className="ui-kpi__value">{data.thresholdPassRate.toFixed(0)}</span>
+                <span className="ui-kpi__unit">%</span>
+              </div>
+            </div>
+            <div className="ui-kpi">
+              <span className="ui-kpi__label">Avg p95 RT</span>
+              <div className="ui-kpi__value-row">
+                <span className="ui-kpi__value">
+                  {(data.points.reduce((s, p) => s + (p.p95ResponseTime ?? 0), 0) / data.points.length).toFixed(0)}
+                </span>
+                <span className="ui-kpi__unit">ms</span>
               </div>
             </div>
           </div>
 
           <div className="charts-grid" style={{ marginBottom: '1rem' }}>
-            <div className="card">
+            <Card>
               <h3 style={{ marginBottom: '0.5rem' }}>p95 Response Time</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                  <XAxis dataKey="label" stroke="var(--text-secondary)" tick={{ fontSize: 11 }} />
-                  <YAxis stroke="var(--text-secondary)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis dataKey="label" stroke="var(--color-text-2)" tick={{ fontSize: 11 }} />
+                  <YAxis stroke="var(--color-text-2)" />
                   <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${Number(v).toFixed(0)} ms`, 'p95']} />
-                  <Line type="monotone" dataKey="p95" stroke="#e67e22" dot={{ r: 3 }} name="p95 RT" />
+                  <Line type="monotone" dataKey="p95" stroke={CHART_COLORS.mean} dot={{ r: 3 }} name="p95 RT" />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
+            </Card>
 
-            <div className="card">
+            <Card>
               <h3 style={{ marginBottom: '0.5rem' }}>Error Rate</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                  <XAxis dataKey="label" stroke="var(--text-secondary)" tick={{ fontSize: 11 }} />
-                  <YAxis stroke="var(--text-secondary)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis dataKey="label" stroke="var(--color-text-2)" tick={{ fontSize: 11 }} />
+                  <YAxis stroke="var(--color-text-2)" />
                   <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${Number(v).toFixed(2)}%`, 'Error Rate']} />
-                  <ReferenceLine y={0} stroke="var(--border-color)" />
-                  <Line type="monotone" dataKey="errorRate" stroke="#e94560" dot={{ r: 3 }} name="Error %" />
+                  <ReferenceLine y={0} stroke="var(--color-border)" />
+                  <Line type="monotone" dataKey="errorRate" stroke={CHART_COLORS.eps} dot={{ r: 3 }} name="Error %" />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
+            </Card>
 
-            <div className="card">
+            <Card>
               <h3 style={{ marginBottom: '0.5rem' }}>Throughput (Total Requests)</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                  <XAxis dataKey="label" stroke="var(--text-secondary)" tick={{ fontSize: 11 }} />
-                  <YAxis stroke="var(--text-secondary)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis dataKey="label" stroke="var(--color-text-2)" tick={{ fontSize: 11 }} />
+                  <YAxis stroke="var(--color-text-2)" />
                   <Tooltip contentStyle={tooltipStyle} formatter={(v) => [Number(v).toLocaleString(), 'Requests']} />
-                  <Line type="monotone" dataKey="throughput" stroke="#2980b9" dot={{ r: 3 }} name="Total Requests" />
+                  <Line type="monotone" dataKey="throughput" stroke={CHART_COLORS.rps} dot={{ r: 3 }} name="Total Requests" />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
+            </Card>
           </div>
 
-          <div className="card">
+          <Card>
             <h3 style={{ marginBottom: '0.5rem' }}>Recent Runs</h3>
-            <table>
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>Run</th>
@@ -151,14 +166,14 @@ export default function TrendsPage() {
                     <td>
                       {p.thresholdVerdict
                         ? <span className={`verdict-badge verdict-${p.thresholdVerdict}`}>{p.thresholdVerdict}</span>
-                        : <span style={{ color: 'var(--text-secondary)' }}>-</span>
+                        : <span style={{ color: 'var(--color-text-2)' }}>-</span>
                       }
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         </>
       )}
     </div>
