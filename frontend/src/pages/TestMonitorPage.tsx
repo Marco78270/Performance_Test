@@ -75,6 +75,9 @@ function formatTime(sec: unknown): string {
 }
 
 import { getLabelColor } from '../utils/labelColors'
+import { Button, Card, KpiCard, PageHeader, Spinner, StatusBadge } from '../components/ui'
+import { CHART_COLORS } from '../styles/chartColors'
+import { Square, FileText } from 'lucide-react'
 
 export default function TestMonitorPage() {
   const { id } = useParams<{ id: string }>()
@@ -174,73 +177,72 @@ export default function TestMonitorPage() {
   }, [smoothedMetrics, startTs])
 
   if (loading) {
-    return <div className="loading-spinner">Loading...</div>
+    return <Spinner label="Chargement..." />
   }
 
   if (!testRun) {
-    return <div className="card">Test not found</div>
+    return <Card>Test non trouvé</Card>
   }
 
   const last = metrics[metrics.length - 1]
-  const tooltipStyle = { background: 'var(--tooltip-bg)', border: '1px solid var(--border-color)' }
+  const tooltipStyle = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' }
 
   return (
     <div>
-      <div className="flex-row" style={{ marginBottom: '0.5rem' }}>
-        <h1 className="page-title" style={{ margin: 0 }}>
-          {testRun.simulationClass}
-        </h1>
-        <span className={`status-badge status-${testRun.status}`}>{testRun.status}</span>
-        {testRun.thresholdVerdict && (
-          <span className={`verdict-badge verdict-${testRun.thresholdVerdict}`}>{testRun.thresholdVerdict}</span>
-        )}
-        {testRun.bandwidthLimitMbps && (
-          <span style={{ color: '#e67e22', fontSize: '0.85rem', fontWeight: 500 }}>
-            Bandwidth: {testRun.bandwidthLimitMbps} Mbps
-          </span>
-        )}
-        <span className={`connection-indicator ${connected ? 'connected' : 'disconnected'}`}>
-          {connected ? 'Live' : 'Disconnected'}
-        </span>
-        {testRun.status === 'RUNNING' && (
-          <button className="btn btn-danger" onClick={handleCancel}>Cancel</button>
-        )}
-        {testRun.status === 'QUEUED' && (
-          <button className="btn btn-danger" onClick={async () => {
-            await cancelQueuedTest(testId)
-            setTestRun((prev) => prev ? { ...prev, status: 'CANCELLED' } : prev)
-          }}>Cancel Queue</button>
-        )}
-        {testRun.reportPath && (
-          <a href={`/reports/${testRun.reportPath}/index.html`} target="_blank"
-            className="btn btn-secondary" rel="noreferrer">View Report</a>
-        )}
-        {testRun.status !== 'RUNNING' && testRun.status !== 'QUEUED' && (
-          <a href={`/api/tests/${testId}/export/pdf`} className="btn btn-secondary">Download PDF</a>
-        )}
-        <button className="btn btn-secondary" onClick={() => setShowLogs(!showLogs)}>
-          {showLogs ? 'Hide Logs' : 'Show Logs'}
-        </button>
-        {testRun.status !== 'RUNNING' && testRun.status !== 'QUEUED' && testRun.launchParams && (
-          <button className="btn btn-secondary" onClick={() => {
-            try {
-              const params = JSON.parse(testRun.launchParams!)
-              const q = new URLSearchParams()
-              if (params.simulationClass) q.set('simulationClass', params.simulationClass)
-              if (params.users) q.set('users', String(params.users))
-              if (params.rampUp != null) q.set('rampUp', String(params.rampUp))
-              if (params.rampUpDuration) q.set('rampUpDuration', String(params.rampUpDuration))
-              if (params.duration) q.set('duration', String(params.duration))
-              if (params.loop != null) q.set('loop', String(params.loop))
-              if (params.bandwidthLimitMbps) q.set('bandwidthLimitMbps', String(params.bandwidthLimitMbps))
-              navigate(`/?${q}`)
-            } catch { navigate('/') }
-          }}>Replay</button>
-        )}
-        <button className="btn btn-secondary" onClick={() => navigate('/history')}>
-          Back to History
-        </button>
-      </div>
+      <PageHeader
+        title={testRun.simulationClass}
+        breadcrumb="Gatling / Monitor"
+        description={testRun.bandwidthLimitMbps ? `Bandwidth: ${testRun.bandwidthLimitMbps} Mbps` : undefined}
+        actions={
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <StatusBadge status={testRun.status} />
+            {testRun.thresholdVerdict && (
+              <span className={`verdict-badge verdict-${testRun.thresholdVerdict}`}>{testRun.thresholdVerdict}</span>
+            )}
+            <span className={`connection-indicator ${connected ? 'connected' : 'disconnected'}`}>
+              {connected ? 'Live' : 'Disconnected'}
+            </span>
+            {testRun.status === 'RUNNING' && (
+              <Button variant="danger" size="sm" icon={<Square size={12} />} onClick={handleCancel}>Cancel</Button>
+            )}
+            {testRun.status === 'QUEUED' && (
+              <Button variant="danger" size="sm" onClick={async () => {
+                await cancelQueuedTest(testId)
+                setTestRun((prev) => prev ? { ...prev, status: 'CANCELLED' } : prev)
+              }}>Cancel Queue</Button>
+            )}
+            {testRun.reportPath && (
+              <a href={`/reports/${testRun.reportPath}/index.html`} target="_blank"
+                className="ui-btn ui-btn--secondary ui-btn--sm" rel="noreferrer">Report</a>
+            )}
+            {testRun.status !== 'RUNNING' && testRun.status !== 'QUEUED' && (
+              <a href={`/api/tests/${testId}/export/pdf`} className="ui-btn ui-btn--secondary ui-btn--sm">
+                <FileText size={14} /> PDF
+              </a>
+            )}
+            <Button variant="secondary" size="sm" onClick={() => setShowLogs(!showLogs)}>
+              {showLogs ? 'Masquer logs' : 'Logs'}
+            </Button>
+            {testRun.status !== 'RUNNING' && testRun.status !== 'QUEUED' && testRun.launchParams && (
+              <Button variant="secondary" size="sm" onClick={() => {
+                try {
+                  const params = JSON.parse(testRun.launchParams!)
+                  const q = new URLSearchParams()
+                  if (params.simulationClass) q.set('simulationClass', params.simulationClass)
+                  if (params.users) q.set('users', String(params.users))
+                  if (params.rampUp != null) q.set('rampUp', String(params.rampUp))
+                  if (params.rampUpDuration) q.set('rampUpDuration', String(params.rampUpDuration))
+                  if (params.duration) q.set('duration', String(params.duration))
+                  if (params.loop != null) q.set('loop', String(params.loop))
+                  if (params.bandwidthLimitMbps) q.set('bandwidthLimitMbps', String(params.bandwidthLimitMbps))
+                  navigate(`/?${q}`)
+                } catch { navigate('/') }
+              }}>Replay</Button>
+            )}
+            <Button variant="secondary" size="sm" onClick={() => navigate('/history')}>Historique</Button>
+          </div>
+        }
+      />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', alignItems: 'center', marginBottom: '1rem' }}>
         {(testRun.labels || []).map((label) => (
@@ -267,16 +269,14 @@ export default function TestMonitorPage() {
                 }
               }}
               style={{ width: '100px', fontSize: '0.8rem', padding: '0.2rem 0.4rem' }} autoFocus />
-            <button className="btn btn-primary" style={{ fontSize: '0.7rem', padding: '0.15rem 0.3rem' }}
-              onClick={async () => {
+            <Button size="sm" variant="primary" onClick={async () => {
                 if (!addingLabel.trim()) return
                 const newLabels = [...(testRun.labels || []), addingLabel.trim()]
                 await updateTestLabels(testId, newLabels)
                 setTestRun(prev => prev ? { ...prev, labels: newLabels } : prev)
                 setAddingLabel(''); setShowAddLabel(false)
-              }}>Add</button>
-            <button className="btn btn-secondary" style={{ fontSize: '0.7rem', padding: '0.15rem 0.3rem' }}
-              onClick={() => { setShowAddLabel(false); setAddingLabel('') }}>&times;</button>
+              }}>Add</Button>
+            <Button size="sm" variant="secondary" onClick={() => { setShowAddLabel(false); setAddingLabel('') }}>✕</Button>
           </div>
         ) : (
           <span style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.8rem' }}
@@ -295,38 +295,26 @@ export default function TestMonitorPage() {
       </div>
 
       {testRun.status === 'QUEUED' && (
-        <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
-          <div className="loading-spinner">Waiting in queue...</div>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>This test will start automatically when the current test finishes.</p>
-        </div>
+        <Card style={{ textAlign: 'center', marginBottom: '1rem' }}>
+          <Spinner label="Waiting in queue..." />
+          <p style={{ color: 'var(--color-text-2)', marginTop: '0.5rem' }}>This test will start automatically when the current test finishes.</p>
+        </Card>
       )}
 
       {last && (
-        <div className="flex-row-wrap" style={{ marginBottom: '1rem' }}>
-          <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Total Requests</div>
-            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{last.totalRequests ?? 0}</div>
-          </div>
-          <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Mean RT</div>
-            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{(last.meanResponseTime ?? 0).toFixed(0)} ms</div>
-          </div>
-          <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Active Users</div>
-            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{last.activeUsers ?? 0}</div>
-          </div>
-          <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Errors</div>
-            <div style={{ fontSize: '1.5rem', color: '#e94560' }}>{last.totalErrors ?? 0}</div>
-          </div>
+        <div className="kpi-grid" style={{ marginBottom: '1rem' }}>
+          <KpiCard label="Total Requests" value={last.totalRequests ?? 0} />
+          <KpiCard label="Mean RT" value={(last.meanResponseTime ?? 0).toFixed(0)} unit="ms" />
+          <KpiCard label="Active Users" value={last.activeUsers ?? 0} />
+          <KpiCard label="Errors" value={last.totalErrors ?? 0} variant={(last.totalErrors ?? 0) > 0 ? 'danger' : 'default'} />
         </div>
       )}
 
       {showLogs && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
+        <Card style={{ marginBottom: '1rem' }}>
           <h3 style={{ marginBottom: '0.5rem' }}>Maven Output</h3>
           <div style={{
-            background: 'var(--bg-primary)',
+            background: 'var(--color-bg)',
             padding: '0.5rem',
             borderRadius: '4px',
             maxHeight: '200px',
@@ -336,12 +324,12 @@ export default function TestMonitorPage() {
             lineHeight: 1.4,
           }}>
             {logs.length === 0 ? (
-              <span style={{ color: 'var(--text-muted)' }}>Waiting for output...</span>
+              <span style={{ color: 'var(--color-text-3)' }}>Waiting for output...</span>
             ) : (
               logs.map((line, i) => {
                 const text = typeof line === 'string' ? line : String(line)
                 return (
-                  <div key={i} style={{ color: text.includes('ERROR') ? '#e94560' : '#a0a0b8' }}>
+                  <div key={i} style={{ color: text.includes('ERROR') ? 'var(--color-error)' : 'var(--color-text-2)' }}>
                     {text}
                   </div>
                 )
@@ -349,72 +337,72 @@ export default function TestMonitorPage() {
             )}
             <div ref={logsEndRef} />
           </div>
-        </div>
+        </Card>
       )}
 
       {testRun.thresholdVerdict && testRun.thresholdDetails && testRun.thresholdDetails.length > 0 && (
         <ThresholdDetailsPanel details={testRun.thresholdDetails} verdict={testRun.thresholdVerdict} />
       )}
 
-      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1rem 0 0.5rem' }}>Gatling Metrics</div>
-      <ErrorBoundary fallback={<div className="card">Failed to render charts</div>}>
+      <div style={{ color: 'var(--color-text-2)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1rem 0 0.5rem' }}>Gatling Metrics</div>
+      <ErrorBoundary fallback={<Card>Failed to render charts</Card>}>
         <div className="charts-grid">
-          <div className="card">
+          <Card>
             <h3 style={{ marginBottom: '0.5rem' }}>Requests/s</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--color-text-2)" />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value) => [(Number(value) || 0).toFixed(2), 'req/s']} />
-                <Line type="monotone" dataKey="requestsPerSecond" stroke="#2980b9" dot={false} name="req/s" />
+                <Line type="monotone" dataKey="requestsPerSecond" stroke={CHART_COLORS.rps} dot={false} name="req/s" />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
 
-          <div className="card">
+          <Card>
             <h3 style={{ marginBottom: '0.5rem' }}>Mean Response Time</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--color-text-2)" />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${(Number(value) || 0).toFixed(0)} ms`, 'Mean RT']} />
-                <Line type="monotone" dataKey="meanResponseTime" stroke="#e67e22" dot={false} name="Mean RT (ms)" />
+                <Line type="monotone" dataKey="meanResponseTime" stroke={CHART_COLORS.mean} dot={false} name="Mean RT (ms)" />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
 
-          <div className="card">
+          <Card>
             <h3 style={{ marginBottom: '0.5rem' }}>Active Users</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--color-text-2)" />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value) => [Number(value) || 0, 'users']} />
-                <Line type="monotone" dataKey="activeUsers" stroke="#9b59b6" dot={false} name="users" />
+                <Line type="monotone" dataKey="activeUsers" stroke={CHART_COLORS.users} dot={false} name="users" />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
 
-          <div className="card">
+          <Card>
             <h3 style={{ marginBottom: '0.5rem' }}>Errors/s</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--color-text-2)" />
                 <Tooltip contentStyle={tooltipStyle} formatter={(value) => [(Number(value) || 0).toFixed(2), 'err/s']} />
-                <Line type="monotone" dataKey="errorsPerSecond" stroke="#e94560" dot={false} name="err/s" />
+                <Line type="monotone" dataKey="errorsPerSecond" stroke={CHART_COLORS.eps} dot={false} name="err/s" />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
         </div>
       </ErrorBoundary>
 
-      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1rem 0 0.5rem' }}>Infrastructure</div>
-      <ErrorBoundary fallback={<div className="card">Failed to render infrastructure metrics</div>}>
+      <div style={{ color: 'var(--color-text-2)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1rem 0 0.5rem' }}>Infrastructure</div>
+      <ErrorBoundary fallback={<Card>Failed to render infrastructure metrics</Card>}>
         <InfraMetricsPanel metrics={infraMetrics} connected={infraConnected} />
       </ErrorBoundary>
     </div>

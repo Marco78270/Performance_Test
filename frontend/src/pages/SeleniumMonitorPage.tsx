@@ -12,6 +12,9 @@ import { useSeleniumMetricsWebSocket } from '../hooks/useSeleniumMetricsWebSocke
 import { useInfraMetricsWebSocket, type InfraMetricsSnapshot } from '../hooks/useInfraMetricsWebSocket'
 import InfraMetricsPanel from '../components/InfraMetricsPanel'
 import NotesEditor from '../components/NotesEditor'
+import { Button, Card, KpiCard, PageHeader, Spinner, StatusBadge } from '../components/ui'
+import { CHART_COLORS } from '../styles/chartColors'
+import { Square } from 'lucide-react'
 
 function parseSteps(stepsJson: string | null): StepResult[] {
   if (!stepsJson) return []
@@ -178,19 +181,31 @@ function BrowserCard({ result, screenshot, showIteration }: {
           Browser #{result.browserIndex + 1}
           {showIteration && <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> - Iter {result.iteration + 1}</span>}
         </span>
-        <span style={{
-          fontSize: '0.85rem',
-          padding: '0.1rem 0.5rem',
-          borderRadius: '4px',
-          background: isPassed ? '#166534' : isFailed ? '#991b1b' : isRunning ? '#854d0e' : '#1e3a5f',
-          color: 'var(--text-heading)',
-        }}>
-          {isRunning && '... '}{result.status}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          {isRunning && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '3px',
+              background: 'rgba(239,68,68,0.15)', color: '#ef4444',
+              fontSize: '0.65rem', fontWeight: 700, padding: '1px 5px',
+              borderRadius: '3px', letterSpacing: '0.5px',
+            }}>
+              <span style={{ fontSize: '0.5rem' }}>●</span> REC
+            </span>
+          )}
+          <span style={{
+            fontSize: '0.85rem',
+            padding: '0.1rem 0.5rem',
+            borderRadius: '4px',
+            background: isPassed ? '#166534' : isFailed ? '#991b1b' : isRunning ? '#854d0e' : '#1e3a5f',
+            color: 'var(--text-heading)',
+          }}>
+            {isRunning && '... '}{result.status}
+          </span>
+        </div>
       </div>
 
-      {/* Screenshot monitor - only show for latest iteration per browser */}
-      {screenshot && (
+      {/* Screenshot monitor - masqué après le test si une vidéo est disponible */}
+      {screenshot && (isRunning || !result.videoPath) && (
         <div
           onClick={() => setExpanded(!expanded)}
           style={{
@@ -221,8 +236,17 @@ function BrowserCard({ result, screenshot, showIteration }: {
       )}
 
       {/* Expanded screenshot lightbox */}
-      {expanded && screenshot && (
+      {expanded && screenshot && (isRunning || !result.videoPath) && (
         <ScreenshotLightbox src={screenshot} onClose={() => setExpanded(false)} />
+      )}
+
+      {/* Video player — affiché après le test si une vidéo est disponible */}
+      {!isRunning && result.videoPath && (
+        <video
+          src={`/api/selenium/tests/${result.testRunId}/videos/${result.browserIndex}`}
+          controls
+          style={{ width: '100%', maxHeight: '270px', borderRadius: '4px', marginBottom: '0.5rem', display: 'block' }}
+        />
       )}
 
       <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
@@ -328,6 +352,9 @@ function BrowserIterationsCard({ browserIndex, browserResults, screenshot, isLiv
   const failedCount = completed.filter(r => r.status === 'FAILED' || r.status === 'ERROR').length
   // Iterations to show collapsed (all completed except the last one if no running)
   const collapsedResults = running ? completed : completed.slice(0, -1)
+  // Vidéo disponible sur l'iteration=0 une fois le test terminé
+  const videoResult = !isLive ? browserResults.find(r => r.iteration === 0) : undefined
+  const hasVideo = videoResult?.videoPath != null
 
   return (
     <div style={{
@@ -346,6 +373,16 @@ function BrowserIterationsCard({ browserIndex, browserResults, screenshot, isLiv
               {' '}/ {browserResults.length} iter
             </span>
           )}
+          {isLive && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '3px',
+              background: 'rgba(239,68,68,0.15)', color: '#ef4444',
+              fontSize: '0.65rem', fontWeight: 700, padding: '1px 5px',
+              borderRadius: '3px', letterSpacing: '0.5px',
+            }}>
+              <span style={{ fontSize: '0.5rem' }}>●</span> REC
+            </span>
+          )}
           {isLive && screenshot && (
             <span style={{ color: '#60a5fa', fontSize: '0.75rem' }}>LIVE</span>
           )}
@@ -361,6 +398,15 @@ function BrowserIterationsCard({ browserIndex, browserResults, screenshot, isLiv
           <img src={screenshot} alt={`Browser #${browserIndex + 1}`}
             style={{ width: '100%', display: 'block' }} />
         </div>
+      )}
+
+      {/* Video player — affiché après le test si une vidéo est disponible */}
+      {hasVideo && videoResult && (
+        <video
+          src={`/api/selenium/tests/${videoResult.testRunId}/videos/${videoResult.browserIndex}`}
+          controls
+          style={{ width: '100%', maxHeight: '270px', borderRadius: '4px', marginBottom: '0.75rem', display: 'block' }}
+        />
       )}
 
       {/* Collapsed completed iterations summary */}
@@ -523,7 +569,7 @@ export default function SeleniumMonitorPage() {
   }, [results])
 
   if (!testRun) {
-    return <div className="loading-spinner">Loading...</div>
+    return <Spinner label="Chargement..." />
   }
 
   const isActive = testRun.status === 'RUNNING' || testRun.status === 'QUEUED'
@@ -537,7 +583,7 @@ export default function SeleniumMonitorPage() {
     : 0
 
   const last = metrics[metrics.length - 1]
-  const tooltipStyle = { background: 'var(--tooltip-bg)', border: '1px solid var(--border-color)' }
+  const tooltipStyle = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' }
 
   async function handleCancel() {
     if (testRunId && confirm('Cancel this test?')) {
@@ -545,65 +591,62 @@ export default function SeleniumMonitorPage() {
     }
   }
 
+  const description = [
+    testRun.browser,
+    `${testRun.instances} instance(s)`,
+    hasLoops ? `${testRun.loops} loops` : null,
+    testRun.rampUpSeconds > 0 ? `ramp-up ${testRun.rampUpSeconds}s` : null,
+    testRun.version ? `v${testRun.version}` : null,
+  ].filter(Boolean).join(' · ')
+
   return (
     <div>
-      {/* Header */}
-      <div className="flex-row" style={{ marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1 }}>
-          <h2>Selenium Test #{testRun.id}</h2>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.3rem' }}>
-            <strong>{testRun.scriptClass}</strong> &bull; {testRun.browser} &bull; {testRun.instances} instance(s)
-            {hasLoops && <> &bull; {testRun.loops} loops</>}
-            {testRun.rampUpSeconds > 0 && <> &bull; ramp-up {testRun.rampUpSeconds}s</>}
-            {testRun.version && <> &bull; v{testRun.version}</>}
+      <PageHeader
+        title={testRun.scriptClass}
+        breadcrumb="Selenium / Monitor"
+        description={description}
+        actions={
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <StatusBadge status={testRun.status} />
+            {isActive && (
+              <Button variant="danger" size="sm" icon={<Square size={12} />} onClick={handleCancel}>Cancel</Button>
+            )}
+            {!isActive && (
+              <a href={`/api/selenium/tests/${testRun.id}/export/pdf`} className="ui-btn ui-btn--secondary ui-btn--sm">Download PDF</a>
+            )}
+            {!isActive && (
+              <Button variant="secondary" size="sm" onClick={() => {
+                const q = new URLSearchParams()
+                q.set('scriptClass', testRun.scriptClass)
+                q.set('browser', testRun.browser)
+                q.set('instances', String(testRun.instances))
+                q.set('loops', String(testRun.loops))
+                if (testRun.rampUpSeconds > 0) q.set('rampUpSeconds', String(testRun.rampUpSeconds))
+                if (testRun.headless) q.set('headless', '1')
+                navigate(`/selenium?${q}`)
+              }}>Replay</Button>
+            )}
           </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span className={`status-badge status-${testRun.status.toLowerCase()}`} style={{ fontSize: '1rem', padding: '0.3rem 0.8rem' }}>
-            {testRun.status}
-          </span>
-          {isActive && (
-            <button className="btn btn-danger" onClick={handleCancel}>Cancel</button>
-          )}
-          {!isActive && (
-            <a href={`/api/selenium/tests/${testRun.id}/export/pdf`} className="btn btn-secondary"
-              style={{ textDecoration: 'none' }}>Download PDF</a>
-          )}
-          {!isActive && (
-            <button className="btn btn-secondary" onClick={() => {
-              const q = new URLSearchParams()
-              q.set('scriptClass', testRun.scriptClass)
-              q.set('browser', testRun.browser)
-              q.set('instances', String(testRun.instances))
-              q.set('loops', String(testRun.loops))
-              if (testRun.rampUpSeconds > 0) q.set('rampUpSeconds', String(testRun.rampUpSeconds))
-              if (testRun.headless) q.set('headless', '1')
-              navigate(`/selenium?${q}`)
-            }}>Replay</button>
-          )}
-        </div>
-      </div>
+        }
+      />
 
       {/* Progress bar */}
-      <div style={{
-        background: 'var(--bg-primary)', borderRadius: '8px', padding: '1rem',
-        marginBottom: '1rem', border: '1px solid var(--border-color)',
-      }}>
+      <Card style={{ marginBottom: '1rem' }}>
         <div className="flex-row" style={{ marginBottom: '0.5rem' }}>
-          <span style={{ color: 'var(--text-secondary)' }}>Progress</span>
-          <span style={{ color: 'var(--text-heading)' }}>
+          <span style={{ color: 'var(--color-text-2)' }}>Progress</span>
+          <span style={{ color: 'var(--color-text)' }}>
             {completedIterations} / {totalExpected} ({progressPercent}%)
             {hasLoops && ' iterations'}
           </span>
         </div>
         <div style={{
-          height: '8px', background: 'var(--bg-hover)', borderRadius: '4px', overflow: 'hidden',
+          height: '8px', background: 'var(--color-surface-raised)', borderRadius: '4px', overflow: 'hidden',
         }}>
           <div style={{
             height: '100%',
             width: `${progressPercent}%`,
             background: testRun.status === 'COMPLETED' && testRun.failedInstances === 0
-              ? '#4ade80' : testRun.failedInstances > 0 || testRun.failedIterations > 0 ? '#f87171' : '#3b82f6',
+              ? 'var(--color-success)' : testRun.failedInstances > 0 || testRun.failedIterations > 0 ? 'var(--color-error)' : 'var(--color-primary)',
             transition: 'width 0.5s ease',
           }} />
         </div>
@@ -611,23 +654,23 @@ export default function SeleniumMonitorPage() {
           <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', fontSize: '0.85rem' }}>
             {hasLoops ? (
               <>
-                <span style={{ color: '#4ade80' }}>Passed Iterations: {testRun.passedIterations}</span>
-                <span style={{ color: '#f87171' }}>Failed Iterations: {testRun.failedIterations}</span>
+                <span style={{ color: 'var(--color-success)' }}>Passed Iterations: {testRun.passedIterations}</span>
+                <span style={{ color: 'var(--color-error)' }}>Failed Iterations: {testRun.failedIterations}</span>
               </>
             ) : (
               <>
-                <span style={{ color: '#4ade80' }}>Passed: {testRun.passedInstances}</span>
-                <span style={{ color: '#f87171' }}>Failed: {testRun.failedInstances}</span>
+                <span style={{ color: 'var(--color-success)' }}>Passed: {testRun.passedInstances}</span>
+                <span style={{ color: 'var(--color-error)' }}>Failed: {testRun.failedInstances}</span>
               </>
             )}
-            <span style={{ color: 'var(--text-secondary)' }}>
+            <span style={{ color: 'var(--color-text-2)' }}>
               Duration: {testRun.startTime && testRun.endTime
                 ? formatDuration(testRun.endTime - testRun.startTime)
                 : '-'}
             </span>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Notes */}
       <div style={{ marginBottom: '1rem' }}>
@@ -642,30 +685,18 @@ export default function SeleniumMonitorPage() {
         />
       </div>
 
-      {/* Summary cards */}
+      {/* Summary KPIs */}
       {last && (
-        <div className="flex-row-wrap" style={{ marginBottom: '1rem' }}>
-          <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Total Iterations</div>
-            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{last.totalIterations ?? 0}</div>
-          </div>
-          <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Mean Step Duration</div>
-            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{(last.meanStepDuration ?? 0).toFixed(0)} ms</div>
-          </div>
-          <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Active Browsers</div>
-            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{last.activeBrowsers ?? 0}</div>
-          </div>
-          <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Errors</div>
-            <div style={{ fontSize: '1.5rem', color: '#e94560' }}>{last.totalErrors ?? 0}</div>
-          </div>
+        <div className="kpi-grid" style={{ marginBottom: '1rem' }}>
+          <KpiCard label="Total Iterations" value={last.totalIterations ?? 0} />
+          <KpiCard label="Mean Step Duration" value={(last.meanStepDuration ?? 0).toFixed(0)} unit="ms" />
+          <KpiCard label="Active Browsers" value={last.activeBrowsers ?? 0} />
+          <KpiCard label="Errors" value={last.totalErrors ?? 0} variant={(last.totalErrors ?? 0) > 0 ? 'danger' : 'default'} />
         </div>
       )}
 
       {/* Section: Browsers */}
-      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1rem 0 0.5rem' }}>Browsers</div>
+      <div style={{ color: 'var(--color-text-2)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1rem 0 0.5rem' }}>Browsers</div>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
@@ -716,63 +747,63 @@ export default function SeleniumMonitorPage() {
       </div>
 
       {/* Section: Metriques */}
-      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1.5rem 0 0.5rem' }}>Metriques</div>
+      <div style={{ color: 'var(--color-text-2)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1.5rem 0 0.5rem' }}>Metriques</div>
       <div className="charts-grid">
-        <div className="card">
+        <Card>
           <h3 style={{ marginBottom: '0.5rem' }}>Iterations/s</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-              <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-              <YAxis stroke="var(--text-secondary)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+              <YAxis stroke="var(--color-text-2)" />
               <Tooltip contentStyle={tooltipStyle} formatter={(value) => [(Number(value) || 0).toFixed(2), 'iter/s']} />
-              <Line type="monotone" dataKey="iterationsPerSecond" stroke="#2980b9" dot={false} name="iter/s" />
+              <Line type="monotone" dataKey="iterationsPerSecond" stroke={CHART_COLORS.rps} dot={false} name="iter/s" />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
 
-        <div className="card">
+        <Card>
           <h3 style={{ marginBottom: '0.5rem' }}>Mean Step Duration</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-              <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-              <YAxis stroke="var(--text-secondary)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+              <YAxis stroke="var(--color-text-2)" />
               <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${(Number(value) || 0).toFixed(0)} ms`, 'Duration']} />
-              <Line type="monotone" dataKey="meanStepDuration" stroke="#e67e22" dot={false} name="Mean Step (ms)" />
+              <Line type="monotone" dataKey="meanStepDuration" stroke={CHART_COLORS.mean} dot={false} name="Mean Step (ms)" />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
 
-        <div className="card">
+        <Card>
           <h3 style={{ marginBottom: '0.5rem' }}>Active Browsers</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-              <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-              <YAxis stroke="var(--text-secondary)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+              <YAxis stroke="var(--color-text-2)" />
               <Tooltip contentStyle={tooltipStyle} formatter={(value) => [Number(value) || 0, 'browsers']} />
-              <Line type="monotone" dataKey="activeBrowsers" stroke="#9b59b6" dot={false} name="browsers" />
+              <Line type="monotone" dataKey="activeBrowsers" stroke={CHART_COLORS.users} dot={false} name="browsers" />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
 
-        <div className="card">
+        <Card>
           <h3 style={{ marginBottom: '0.5rem' }}>Errors/s</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-              <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-              <YAxis stroke="var(--text-secondary)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+              <YAxis stroke="var(--color-text-2)" />
               <Tooltip contentStyle={tooltipStyle} formatter={(value) => [(Number(value) || 0).toFixed(2), 'err/s']} />
-              <Line type="monotone" dataKey="errorsPerSecond" stroke="#e94560" dot={false} name="err/s" />
+              <Line type="monotone" dataKey="errorsPerSecond" stroke={CHART_COLORS.eps} dot={false} name="err/s" />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
       </div>
 
       {/* Section: Infrastructure */}
-      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1.5rem 0 0.5rem' }}>Infrastructure</div>
+      <div style={{ color: 'var(--color-text-2)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '1.5rem 0 0.5rem' }}>Infrastructure</div>
       <InfraMetricsPanel metrics={infraMetrics} connected={infraConnected} />
     </div>
   )

@@ -2,7 +2,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import './KpiCard.css'
 
 type Trend = 'up' | 'down' | 'stable'
-type KpiVariant = 'default' | 'success' | 'warning' | 'error' | 'info'
+type KpiVariant = 'default' | 'success' | 'warning' | 'error' | 'danger' | 'info'
 
 interface KpiCardProps {
   label: string

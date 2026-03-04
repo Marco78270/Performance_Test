@@ -11,7 +11,8 @@
 
 .ui-kpi--success { border-left: 3px solid var(--color-success); }
 .ui-kpi--warning { border-left: 3px solid var(--color-warning); }
-.ui-kpi--error   { border-left: 3px solid var(--color-error);   }
+.ui-kpi--error,
+.ui-kpi--danger  { border-left: 3px solid var(--color-error);   }
 .ui-kpi--info    { border-left: 3px solid var(--color-info);    }
 
 .ui-kpi__label {
