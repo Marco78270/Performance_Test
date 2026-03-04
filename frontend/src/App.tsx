@@ -22,6 +22,7 @@ import SchedulerPage from './pages/SchedulerPage'
 import SettingsPage from './pages/SettingsPage'
 import { checkAuth, clearCredentials } from './api/auth'
 import { useTheme } from './hooks/useTheme'
+import './styles/design-tokens.css'
 import './App.css'
 
 function App() {
