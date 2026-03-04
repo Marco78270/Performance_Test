@@ -6,6 +6,7 @@ import {
   type SeleniumTestRun, type SeleniumPage,
 } from '../api/seleniumApi'
 import { getLabelColor } from '../utils/labelColors'
+import { Button, Card, PageHeader, Spinner, StatusBadge } from '../components/ui'
 
 type SortField = 'startTime' | 'scriptClass' | 'status' | 'id'
 type SortDir = 'asc' | 'desc'
@@ -322,7 +323,7 @@ export default function SeleniumHistoryPage() {
         </td>
         <td>{formatDate(run.startTime)}</td>
         <td>{formatDuration(run.startTime, run.endTime)}</td>
-        <td><span className={`status-badge status-${run.status.toLowerCase()}`}>{run.status}</span></td>
+        <td><StatusBadge status={run.status} /></td>
         <td>
           {run.status !== 'QUEUED' && run.status !== 'RUNNING' ? (
             <span>
@@ -361,24 +362,26 @@ export default function SeleniumHistoryPage() {
 
   return (
     <div>
-      <div className="flex-row" style={{ marginBottom: '1rem' }}>
-        <h2 style={{ margin: 0 }}>Selenium History</h2>
-        {compareSelection.length === 2 && (
-          <button className="btn btn-primary"
-            onClick={() => navigate(`/selenium/compare?ids=${compareSelection[0]},${compareSelection[1]}`)}>
-            Compare ({compareSelection.length})
-          </button>
-        )}
-        {compareSelection.length === 1 && (
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Select 1 more to compare</span>
-        )}
-        {compareSelection.length > 0 && (
-          <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
-            onClick={() => setCompareSelection([])}>Clear</button>
-        )}
-      </div>
+      <PageHeader
+        title="Selenium History"
+        actions={
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {compareSelection.length === 2 && (
+              <Button size="sm" onClick={() => navigate(`/selenium/compare?ids=${compareSelection[0]},${compareSelection[1]}`)}>
+                Compare ({compareSelection.length})
+              </Button>
+            )}
+            {compareSelection.length === 1 && (
+              <span style={{ color: 'var(--color-text-2)', fontSize: '0.85rem' }}>Sélectionnez 1 de plus</span>
+            )}
+            {compareSelection.length > 0 && (
+              <Button variant="secondary" size="sm" onClick={() => setCompareSelection([])}>Clear</Button>
+            )}
+          </div>
+        }
+      />
 
-      <div className="card" style={{ padding: '0.6rem 1.2rem', marginBottom: '0.5rem' }}>
+      <Card padding="sm" style={{ marginBottom: '0.5rem' }}>
         <div className="flex-row" style={{ flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginRight: '0.5rem' }}>Browser:</span>
@@ -434,27 +437,21 @@ export default function SeleniumHistoryPage() {
           </div>
           <div style={{ display: 'flex', gap: '2px', marginLeft: 'auto' }}>
             <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginRight: '0.5rem', alignSelf: 'center' }}>View:</span>
-            <button
-              className={`btn ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ fontSize: '0.8rem', padding: '0.25rem 0.6rem', borderRadius: '4px 0 0 4px' }}
-              onClick={() => handleSwitchViewMode('list')}
-            >List</button>
-            <button
-              className={`btn ${viewMode === 'folders' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ fontSize: '0.8rem', padding: '0.25rem 0.6rem', borderRadius: '0 4px 4px 0' }}
-              onClick={() => handleSwitchViewMode('folders')}
-            >Folders</button>
+            <Button variant={viewMode === 'list' ? 'primary' : 'secondary'} size="sm"
+              style={{ borderRadius: '4px 0 0 4px' }} onClick={() => handleSwitchViewMode('list')}>List</Button>
+            <Button variant={viewMode === 'folders' ? 'primary' : 'secondary'} size="sm"
+              style={{ borderRadius: '0 4px 4px 0' }} onClick={() => handleSwitchViewMode('folders')}>Folders</Button>
           </div>
         </div>
-      </div>
+      </Card>
 
       {viewMode === 'list' ? (
-        <div className="card">
+        <Card>
           {loading ? (
-            <div className="loading-spinner">Loading...</div>
+            <Spinner label="Chargement..." />
           ) : (
             <>
-              <table>
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th style={{ width: '30px' }}></th>
@@ -480,27 +477,21 @@ export default function SeleniumHistoryPage() {
               </table>
 
               {page && page.totalPages > 1 && (
-                <div className="pagination" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
-                  <button className="btn btn-secondary" disabled={page.first}
-                    onClick={() => setPageNum(0)} style={{ padding: '0.3rem 0.6rem' }}>First</button>
-                  <button className="btn btn-secondary" disabled={page.first}
-                    onClick={() => setPageNum((p) => p - 1)} style={{ padding: '0.3rem 0.6rem' }}>Prev</button>
-                  <span style={{ color: 'var(--text-secondary)' }}>
-                    Page {page.number + 1} of {page.totalPages} ({page.totalElements} total)
-                  </span>
-                  <button className="btn btn-secondary" disabled={page.last}
-                    onClick={() => setPageNum((p) => p + 1)} style={{ padding: '0.3rem 0.6rem' }}>Next</button>
-                  <button className="btn btn-secondary" disabled={page.last}
-                    onClick={() => setPageNum(page.totalPages - 1)} style={{ padding: '0.3rem 0.6rem' }}>Last</button>
+                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
+                  <Button variant="secondary" size="sm" disabled={page.first} onClick={() => setPageNum(0)}>First</Button>
+                  <Button variant="secondary" size="sm" disabled={page.first} onClick={() => setPageNum((p) => p - 1)}>Prev</Button>
+                  <span style={{ color: 'var(--color-text-2)' }}>Page {page.number + 1} / {page.totalPages} ({page.totalElements})</span>
+                  <Button variant="secondary" size="sm" disabled={page.last} onClick={() => setPageNum((p) => p + 1)}>Next</Button>
+                  <Button variant="secondary" size="sm" disabled={page.last} onClick={() => setPageNum(page.totalPages - 1)}>Last</Button>
                 </div>
               )}
             </>
           )}
-        </div>
+        </Card>
       ) : (
         <div>
           {folderLoading ? (
-            <div className="card"><div className="loading-spinner">Loading...</div></div>
+            <Card><Spinner label="Chargement..." /></Card>
           ) : (
             <>
               {folderTotal > 500 && (

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchTestRuns, updateTestVersion, updateTestLabels, deleteTestRun, cancelQueuedTest, fetchAllLabels, exportCsv, exportJson, type TestRun, type Page } from '../api/testRunApi'
 import { getLabelColor } from '../utils/labelColors'
+import { Button, Card, PageHeader, Spinner, StatusBadge } from '../components/ui'
 
 type SortField = 'startTime' | 'simulationClass' | 'status' | 'totalRequests' | 'meanResponseTime'
 type SortDir = 'asc' | 'desc'
@@ -35,8 +36,8 @@ function groupByVersion(tests: TestRun[]): { version: string; tests: TestRun[] }
     .sort(([a, testsA], [b, testsB]) => {
       if (!a) return 1
       if (!b) return -1
-      const latestA = Math.max(...testsA.map(t => new Date(t.startTime).getTime()))
-      const latestB = Math.max(...testsB.map(t => new Date(t.startTime).getTime()))
+      const latestA = Math.max(...testsA.map(t => t.startTime ?? 0))
+      const latestB = Math.max(...testsB.map(t => t.startTime ?? 0))
       return latestB - latestA
     })
     .map(([version, tests]) => ({ version: version || 'No version', tests }))
@@ -233,8 +234,7 @@ export default function HistoryPage() {
                 <input type="text" value={editingVersion.value}
                   onChange={(e) => setEditingVersion({ ...editingVersion, value: e.target.value })}
                   style={{ width: '80px' }} />
-                <button className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem' }}
-                  onClick={() => handleVersionSave(run.id)}>OK</button>
+                <Button variant="primary" size="sm" onClick={() => handleVersionSave(run.id)}>OK</Button>
               </div>
             ) : (
               <span onClick={() => setEditingVersion({ id: run.id, value: run.version || '' })}
@@ -305,7 +305,7 @@ export default function HistoryPage() {
         </td>
         <td>{run.startTime ? new Date(run.startTime).toLocaleString() : '-'}</td>
         <td>{formatDuration(run)}</td>
-        <td><span className={`status-badge status-${run.status}`}>{run.status}</span></td>
+        <td><StatusBadge status={run.status} /></td>
         <td>
           {run.thresholdVerdict
             ? <span className={`verdict-badge verdict-${run.thresholdVerdict}`}>{run.thresholdVerdict}</span>
@@ -317,21 +317,17 @@ export default function HistoryPage() {
         <td>
           <div className="flex-row">
             {run.status === 'RUNNING' && (
-              <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
-                onClick={() => navigate(`/test/${run.id}`)}>Live</button>
+              <Button variant="secondary" size="sm" onClick={() => navigate(`/test/${run.id}`)}>Live</Button>
             )}
             {run.status === 'QUEUED' && (
-              <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', color: '#f39c12' }}
-                onClick={() => handleCancelQueued(run)}>Cancel</button>
+              <Button variant="danger" size="sm" onClick={() => handleCancelQueued(run)}>Cancel</Button>
             )}
             {run.reportPath && (
-              <a href={`/reports/${run.reportPath}/index.html`} target="_blank"
-                className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
-                rel="noreferrer">Report</a>
+              <a href={`/reports/${run.reportPath}/index.html`} target="_blank" rel="noreferrer"
+                className="ui-btn ui-btn--secondary ui-btn--sm">Report</a>
             )}
             {run.status !== 'RUNNING' && run.status !== 'QUEUED' && (
-              <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', color: '#e94560' }}
-                onClick={() => handleDelete(run.id)}>Delete</button>
+              <Button variant="danger" size="sm" onClick={() => handleDelete(run.id)}>Delete</Button>
             )}
           </div>
         </td>
@@ -343,30 +339,28 @@ export default function HistoryPage() {
 
   return (
     <div>
-      <div className="flex-row" style={{ marginBottom: '1rem' }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Test History</h1>
-        {compareSelection.length === 2 && (
-          <button className="btn btn-primary"
-            onClick={() => navigate(`/compare?ids=${compareSelection[0]},${compareSelection[1]}`)}>
-            Compare ({compareSelection.length})
-          </button>
-        )}
-        {compareSelection.length === 1 && (
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Select 1 more to compare</span>
-        )}
-        {compareSelection.length > 0 && (
-          <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
-            onClick={() => setCompareSelection([])}>Clear</button>
-        )}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
-          <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
-            onClick={() => exportCsv()}>Export CSV</button>
-          <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
-            onClick={() => exportJson()}>Export JSON</button>
-        </div>
-      </div>
+      <PageHeader
+        title="Test History"
+        actions={
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {compareSelection.length === 2 && (
+              <Button size="sm" onClick={() => navigate(`/compare?ids=${compareSelection[0]},${compareSelection[1]}`)}>
+                Compare ({compareSelection.length})
+              </Button>
+            )}
+            {compareSelection.length === 1 && (
+              <span style={{ color: 'var(--color-text-2)', fontSize: '0.85rem' }}>Sélectionnez 1 de plus</span>
+            )}
+            {compareSelection.length > 0 && (
+              <Button variant="secondary" size="sm" onClick={() => setCompareSelection([])}>Clear</Button>
+            )}
+            <Button variant="secondary" size="sm" onClick={() => exportCsv()}>Export CSV</Button>
+            <Button variant="secondary" size="sm" onClick={() => exportJson()}>Export JSON</Button>
+          </div>
+        }
+      />
 
-      <div className="card" style={{ padding: '0.6rem 1.2rem', marginBottom: '0.5rem' }}>
+      <Card padding="sm" style={{ marginBottom: '0.5rem' }}>
         <div className="flex-row" style={{ flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ position: 'relative' }}>
             <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginRight: '0.5rem' }}>Label:</span>
@@ -410,29 +404,23 @@ export default function HistoryPage() {
               <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
-          <div style={{ display: 'flex', gap: '2px', marginLeft: 'auto' }}>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginRight: '0.5rem', alignSelf: 'center' }}>View:</span>
-            <button
-              className={`btn ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ fontSize: '0.8rem', padding: '0.25rem 0.6rem', borderRadius: '4px 0 0 4px' }}
-              onClick={() => handleSwitchViewMode('list')}
-            >List</button>
-            <button
-              className={`btn ${viewMode === 'folders' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ fontSize: '0.8rem', padding: '0.25rem 0.6rem', borderRadius: '0 4px 4px 0' }}
-              onClick={() => handleSwitchViewMode('folders')}
-            >Folders</button>
+          <div style={{ display: 'flex', gap: '2px', marginLeft: 'auto', alignItems: 'center' }}>
+            <span style={{ color: 'var(--color-text-2)', fontSize: '0.85rem', marginRight: '0.5rem' }}>View:</span>
+            <Button variant={viewMode === 'list' ? 'primary' : 'secondary'} size="sm"
+              style={{ borderRadius: '4px 0 0 4px' }} onClick={() => handleSwitchViewMode('list')}>List</Button>
+            <Button variant={viewMode === 'folders' ? 'primary' : 'secondary'} size="sm"
+              style={{ borderRadius: '0 4px 4px 0' }} onClick={() => handleSwitchViewMode('folders')}>Folders</Button>
           </div>
         </div>
-      </div>
+      </Card>
 
       {viewMode === 'list' ? (
-        <div className="card">
+        <Card>
           {loading ? (
-            <div className="loading-spinner">Loading...</div>
+            <Spinner label="Chargement..." />
           ) : (
             <>
-              <table>
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th style={{ width: '30px' }}></th>
@@ -458,27 +446,21 @@ export default function HistoryPage() {
               </table>
 
               {page && page.totalPages > 1 && (
-                <div className="pagination" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
-                  <button className="btn btn-secondary" disabled={page.first}
-                    onClick={() => setPageNum(0)} style={{ padding: '0.3rem 0.6rem' }}>First</button>
-                  <button className="btn btn-secondary" disabled={page.first}
-                    onClick={() => setPageNum((p) => p - 1)} style={{ padding: '0.3rem 0.6rem' }}>Prev</button>
-                  <span style={{ color: 'var(--text-secondary)' }}>
-                    Page {page.number + 1} of {page.totalPages} ({page.totalElements} total)
-                  </span>
-                  <button className="btn btn-secondary" disabled={page.last}
-                    onClick={() => setPageNum((p) => p + 1)} style={{ padding: '0.3rem 0.6rem' }}>Next</button>
-                  <button className="btn btn-secondary" disabled={page.last}
-                    onClick={() => setPageNum(page.totalPages - 1)} style={{ padding: '0.3rem 0.6rem' }}>Last</button>
+                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
+                  <Button variant="secondary" size="sm" disabled={page.first} onClick={() => setPageNum(0)}>First</Button>
+                  <Button variant="secondary" size="sm" disabled={page.first} onClick={() => setPageNum((p) => p - 1)}>Prev</Button>
+                  <span style={{ color: 'var(--color-text-2)' }}>Page {page.number + 1} / {page.totalPages} ({page.totalElements})</span>
+                  <Button variant="secondary" size="sm" disabled={page.last} onClick={() => setPageNum((p) => p + 1)}>Next</Button>
+                  <Button variant="secondary" size="sm" disabled={page.last} onClick={() => setPageNum(page.totalPages - 1)}>Last</Button>
                 </div>
               )}
             </>
           )}
-        </div>
+        </Card>
       ) : (
         <div>
           {folderLoading ? (
-            <div className="card"><div className="loading-spinner">Loading...</div></div>
+            <Card><Spinner label="Chargement..." /></Card>
           ) : (
             <>
               {folderTotal > 500 && (
@@ -487,14 +469,14 @@ export default function HistoryPage() {
                 </div>
               )}
               {groups.length === 0 && (
-                <div className="card" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>No test runs found</div>
+                <Card style={{ textAlign: 'center', color: 'var(--color-text-2)', padding: '2rem' }}>No test runs found</Card>
               )}
               {groups.map(group => {
                 const expanded = expandedVersions.has(group.version)
                 const completed = group.tests.filter(t => t.status === 'COMPLETED').length
                 const failed = group.tests.filter(t => t.status === 'FAILED').length
                 const latest = group.tests.reduce((a, b) =>
-                  new Date(a.startTime).getTime() > new Date(b.startTime).getTime() ? a : b
+                  (a.startTime ?? 0) > (b.startTime ?? 0) ? a : b
                 )
                 return (
                   <div key={group.version} className="card" style={{ marginBottom: '0.4rem', padding: 0, overflow: 'hidden' }}>
@@ -526,7 +508,7 @@ export default function HistoryPage() {
                       <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginLeft: 'auto', display: 'flex', gap: '0.8rem' }}>
                         {completed > 0 && <span style={{ color: '#2ecc71' }}>{completed} passed</span>}
                         {failed > 0 && <span style={{ color: '#e94560' }}>{failed} failed</span>}
-                        <span>Last: {new Date(latest.startTime).toLocaleDateString()}</span>
+                        <span>Last: {latest.startTime ? new Date(latest.startTime).toLocaleDateString() : '-'}</span>
                       </span>
                     </div>
                     {expanded && (
