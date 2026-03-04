@@ -4,6 +4,7 @@ import {
   type ThresholdProfile, type ThresholdRule, type CreateThresholdProfileRequest,
 } from '../api/thresholdApi'
 import { fetchSimulationClasses } from '../api/simulationApi'
+import { Button, Card, PageHeader, Spinner, Modal, Input, Select, Alert } from '../components/ui'
 
 const METRICS = [
   { value: 'meanResponseTime', label: 'Mean Response Time (ms)' },
@@ -123,22 +124,33 @@ export default function ThresholdsPage() {
     setFormRules(prev => [...prev, emptyRule()])
   }
 
+  const modalFooter = (
+    <div className="flex-row" style={{ justifyContent: 'flex-end' }}>
+      <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
+      <Button variant="primary" onClick={handleSave}
+        disabled={!formName || !formClass || formRules.length === 0}>
+        {editing ? 'Update' : 'Create'}
+      </Button>
+    </div>
+  )
+
   return (
     <div>
-      <div className="flex-row" style={{ marginBottom: '1rem' }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Threshold Profiles</h1>
-        <button className="btn btn-primary" onClick={openCreate}>Create Profile</button>
-      </div>
+      <PageHeader
+        title="Threshold Profiles"
+        breadcrumb="Gatling / Thresholds"
+        actions={<Button variant="primary" onClick={openCreate}>+ New Profile</Button>}
+      />
 
-      <div className="card">
+      <Card>
         {loading ? (
-          <div className="loading-spinner">Loading...</div>
+          <Spinner />
         ) : profiles.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+          <div style={{ textAlign: 'center', color: 'var(--color-text-2)', padding: '2rem' }}>
             No threshold profiles yet. Create one to define success criteria for your simulations.
           </div>
         ) : (
-          <table>
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -155,16 +167,16 @@ export default function ThresholdsPage() {
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                       {p.rules.map((r, i) => (
-                        <span key={i} style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{r.label}</span>
+                        <span key={i} style={{ fontSize: '0.8rem', color: 'var(--color-text-2)' }}>{r.label}</span>
                       ))}
                     </div>
                   </td>
                   <td>
                     <div className="flex-row">
-                      <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
-                        onClick={() => openEdit(p)}>Edit</button>
-                      <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', color: '#e94560' }}
-                        onClick={() => handleDelete(p.id)}>Delete</button>
+                      <Button variant="secondary" size="sm"
+                        onClick={() => openEdit(p)}>Edit</Button>
+                      <Button variant="danger" size="sm"
+                        onClick={() => handleDelete(p.id)}>Delete</Button>
                     </div>
                   </td>
                 </tr>
@@ -172,74 +184,67 @@ export default function ThresholdsPage() {
             </tbody>
           </table>
         )}
-      </div>
+      </Card>
 
-      {modalOpen && (
-        <div className="modal-overlay" onClick={() => setModalOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ minWidth: '550px', maxWidth: '700px' }}>
-            <h3>{editing ? 'Edit Profile' : 'Create Profile'}</h3>
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? 'Edit Profile' : 'Create Profile'}
+        size="lg"
+        footer={modalFooter}
+      >
+        {error && <Alert variant="error">{error}</Alert>}
 
-            {error && <div style={{ color: '#e94560', marginTop: '0.5rem', fontSize: '0.85rem' }}>{error}</div>}
+        <div style={{ marginTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+          <Input
+            label="Name"
+            type="text"
+            value={formName}
+            onChange={(e) => setFormName(e.target.value)}
+            placeholder="e.g. Production SLA"
+          />
 
-            <div style={{ marginTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-              <div>
-                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Name</label>
-                <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. Production SLA" style={{ width: '100%' }} />
-              </div>
+          <Select
+            label="Simulation Class"
+            value={formClass}
+            onChange={(e) => setFormClass(e.target.value)}
+          >
+            {classes.map(c => <option key={c} value={c}>{c}</option>)}
+          </Select>
 
-              <div>
-                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'block', marginBottom: '0.2rem' }}>Simulation Class</label>
-                <select value={formClass} onChange={(e) => setFormClass(e.target.value)} style={{ width: '100%' }}>
-                  {classes.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <div className="flex-row" style={{ marginBottom: '0.3rem' }}>
-                  <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', flex: 1 }}>Rules</label>
-                  <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem' }}
-                    onClick={addRule}>+ Add Rule</button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {formRules.map((rule, i) => (
-                    <div key={i} style={{
-                      display: 'flex', gap: '0.4rem', alignItems: 'center',
-                      padding: '0.5rem', background: 'var(--bg-primary)', borderRadius: '4px', border: '1px solid var(--border-color)'
-                    }}>
-                      <select value={rule.metric} onChange={(e) => updateRule(i, { metric: e.target.value })}
-                        style={{ flex: 2 }}>
-                        {METRICS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                      </select>
-                      <select value={rule.operator} onChange={(e) => updateRule(i, { operator: e.target.value as ThresholdRule['operator'] })}
-                        style={{ flex: 1 }}>
-                        {OPERATORS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                      </select>
-                      <input type="number" value={rule.value}
-                        onChange={(e) => updateRule(i, { value: Number(e.target.value) })}
-                        style={{ width: '80px' }} />
-                      {formRules.length > 1 && (
-                        <button className="btn btn-secondary"
-                          style={{ fontSize: '0.7rem', padding: '0.15rem 0.3rem', color: '#e94560' }}
-                          onClick={() => removeRule(i)}>&times;</button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+          <div>
+            <div className="flex-row" style={{ marginBottom: '0.3rem' }}>
+              <label style={{ color: 'var(--color-text-2)', fontSize: '0.8rem', flex: 1 }}>Rules</label>
+              <Button variant="secondary" size="sm" onClick={addRule}>+ Add Rule</Button>
             </div>
 
-            <div className="flex-row" style={{ marginTop: '1rem', justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleSave}
-                disabled={!formName || !formClass || formRules.length === 0}>
-                {editing ? 'Update' : 'Create'}
-              </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {formRules.map((rule, i) => (
+                <div key={i} style={{
+                  display: 'flex', gap: '0.4rem', alignItems: 'center',
+                  padding: '0.5rem', background: 'var(--color-bg)', borderRadius: '4px', border: '1px solid var(--color-border)'
+                }}>
+                  <select value={rule.metric} onChange={(e) => updateRule(i, { metric: e.target.value })}
+                    style={{ flex: 2 }}>
+                    {METRICS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                  <select value={rule.operator} onChange={(e) => updateRule(i, { operator: e.target.value as ThresholdRule['operator'] })}
+                    style={{ flex: 1 }}>
+                    {OPERATORS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                  <input type="number" value={rule.value}
+                    onChange={(e) => updateRule(i, { value: Number(e.target.value) })}
+                    style={{ width: '80px' }} />
+                  {formRules.length > 1 && (
+                    <Button variant="danger" size="sm"
+                      onClick={() => removeRule(i)}>&times;</Button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }

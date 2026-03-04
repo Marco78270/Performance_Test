@@ -9,16 +9,18 @@ import {
   type CreateServerRequest,
   type ServerType,
 } from '../api/serverApi'
+import { Button, Card, PageHeader, Spinner, Modal, Alert } from '../components/ui'
 
 const SERVER_TYPES: ServerType[] = ['API', 'SQL', 'WEB', 'FILE']
 
 interface ServerModalProps {
+  open: boolean
   server: MonitoredServer | null
   onClose: () => void
   onSave: (request: CreateServerRequest) => Promise<void>
 }
 
-function ServerModal({ server, onClose, onSave }: ServerModalProps) {
+function ServerModal({ open, server, onClose, onSave }: ServerModalProps) {
   const [name, setName] = useState(server?.name || '')
   const [url, setUrl] = useState(server?.url || '')
   const [serverType, setServerType] = useState<ServerType>(server?.serverType || 'API')
@@ -39,57 +41,62 @@ function ServerModal({ server, onClose, onSave }: ServerModalProps) {
     }
   }
 
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>{server ? 'Edit Server' : 'Add Server'}</h3>
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              style={{ width: '100%' }}
-              placeholder="e.g. API Server 1"
-            />
-          </div>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>URL</label>
-            <input
-              type="text"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              required
-              style={{ width: '100%' }}
-              placeholder="e.g. http://192.168.1.10:9182"
-            />
-          </div>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>Type</label>
-            <select
-              value={serverType}
-              onChange={(e) => setServerType(e.target.value as ServerType)}
-              style={{ width: '100%' }}
-            >
-              {SERVER_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-          {error && <div style={{ color: '#e94560', marginBottom: '1rem' }}>{error}</div>}
-          <div className="flex-row" style={{ justifyContent: 'flex-end' }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-          </div>
-        </form>
-      </div>
+  const footer = (
+    <div className="flex-row" style={{ justifyContent: 'flex-end' }}>
+      <Button variant="secondary" type="button" onClick={onClose}>
+        Cancel
+      </Button>
+      <Button variant="primary" type="submit" disabled={saving} onClick={handleSubmit as unknown as React.MouseEventHandler<HTMLButtonElement>}>
+        {saving ? 'Saving...' : 'Save'}
+      </Button>
     </div>
+  )
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={server ? 'Edit Server' : 'Add Server'}
+      footer={footer}
+    >
+      <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.3rem', color: 'var(--color-text-2)' }}>Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            style={{ width: '100%' }}
+            placeholder="e.g. API Server 1"
+          />
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.3rem', color: 'var(--color-text-2)' }}>URL</label>
+          <input
+            type="text"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            required
+            style={{ width: '100%' }}
+            placeholder="e.g. http://192.168.1.10:9182"
+          />
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.3rem', color: 'var(--color-text-2)' }}>Type</label>
+          <select
+            value={serverType}
+            onChange={(e) => setServerType(e.target.value as ServerType)}
+            style={{ width: '100%' }}
+          >
+            {SERVER_TYPES.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+        {error && <Alert variant="error" style={{ marginBottom: '1rem' }}>{error}</Alert>}
+      </form>
+    </Modal>
   )
 }
 
@@ -159,25 +166,28 @@ export default function ServersPage() {
   }
 
   if (loading) {
-    return <div className="loading-spinner">Loading...</div>
+    return <Spinner />
   }
 
   return (
     <div>
-      <div className="flex-row" style={{ marginBottom: '1rem' }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Monitored Servers</h1>
-        <button className="btn btn-primary" onClick={openCreateModal}>
-          Add Server
-        </button>
-      </div>
+      <PageHeader
+        title="Monitored Servers"
+        breadcrumb="Système / Serveurs"
+        actions={
+          <Button variant="primary" onClick={openCreateModal}>
+            Add Server
+          </Button>
+        }
+      />
 
-      <div className="card">
+      <Card>
         {servers.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)' }}>
+          <p style={{ color: 'var(--color-text-2)' }}>
             No servers configured. Add a Windows Exporter endpoint to start monitoring infrastructure metrics.
           </p>
         ) : (
-          <table>
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -205,38 +215,41 @@ export default function ServersPage() {
                       ) : server.lastSeenAt ? (
                         <span style={{ color: '#27ae60' }}>Online</span>
                       ) : (
-                        <span style={{ color: 'var(--text-secondary)' }}>Unknown</span>
+                        <span style={{ color: 'var(--color-text-2)' }}>Unknown</span>
                       )
                     ) : (
                       <span style={{ color: '#7f8c8d' }}>Disabled</span>
                     )}
                   </td>
-                  <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  <td style={{ fontSize: '0.85rem', color: 'var(--color-text-2)' }}>
                     {formatDate(server.lastSeenAt)}
                   </td>
                   <td>
                     <div className="flex-row">
-                      <button
-                        className="btn btn-secondary"
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => handleToggle(server)}
                         style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
                       >
                         {server.enabled ? 'Disable' : 'Enable'}
-                      </button>
-                      <button
-                        className="btn btn-secondary"
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => openEditModal(server)}
                         style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
                       >
                         Edit
-                      </button>
-                      <button
-                        className="btn btn-danger"
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
                         onClick={() => handleDelete(server)}
                         style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
                       >
                         Delete
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -244,15 +257,14 @@ export default function ServersPage() {
             </tbody>
           </table>
         )}
-      </div>
+      </Card>
 
-      {modalOpen && (
-        <ServerModal
-          server={editingServer}
-          onClose={() => setModalOpen(false)}
-          onSave={handleSave}
-        />
-      )}
+      <ServerModal
+        open={modalOpen}
+        server={editingServer}
+        onClose={() => setModalOpen(false)}
+        onSave={handleSave}
+      />
     </div>
   )
 }

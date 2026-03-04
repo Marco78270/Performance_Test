@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { fetchScheduledJobs, createScheduledJob, cancelScheduledJob, type ScheduledJob } from '../api/schedulerApi'
 import { fetchSimulationClasses } from '../api/simulationApi'
 import { fetchSeleniumClasses } from '../api/seleniumApi'
+import { Button, Card, PageHeader, Spinner, Alert } from '../components/ui'
 
 function formatCountdown(scheduledAt: number): string {
   const diff = scheduledAt - Date.now()
@@ -18,9 +19,9 @@ function statusColor(status: string): string {
   switch (status) {
     case 'PENDING': return '#facc15'
     case 'LAUNCHED': return '#4ade80'
-    case 'CANCELLED': return 'var(--text-secondary)'
+    case 'CANCELLED': return 'var(--color-text-2)'
     case 'FAILED': return '#f87171'
-    default: return 'var(--text-primary)'
+    default: return 'var(--color-text)'
   }
 }
 
@@ -120,13 +121,13 @@ export default function SchedulerPage() {
     setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'CANCELLED' as const } : j))
   }
 
-  const labelStyle: React.CSSProperties = { color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }
+  const labelStyle: React.CSSProperties = { color: 'var(--color-text-2)', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }
 
   return (
     <div>
-      <h1 className="page-title">Scheduler</h1>
+      <PageHeader title="Scheduler" breadcrumb="Système / Scheduler" />
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      <Card style={{ marginBottom: '1rem' }}>
         <h3>Schedule a Test</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
           <div>
@@ -163,7 +164,7 @@ export default function SchedulerPage() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <input type="checkbox" id="rampUp" checked={rampUp} onChange={e => setRampUp(e.target.checked)} />
-                <label htmlFor="rampUp" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Ramp-up</label>
+                <label htmlFor="rampUp" style={{ color: 'var(--color-text-2)', fontSize: '0.85rem' }}>Ramp-up</label>
               </div>
               {rampUp && (
                 <div>
@@ -199,7 +200,7 @@ export default function SchedulerPage() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <input type="checkbox" id="headless" checked={headless} onChange={e => setHeadless(e.target.checked)} />
-                <label htmlFor="headless" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Headless</label>
+                <label htmlFor="headless" style={{ color: 'var(--color-text-2)', fontSize: '0.85rem' }}>Headless</label>
               </div>
             </>
           )}
@@ -224,22 +225,22 @@ export default function SchedulerPage() {
             />
           </div>
         </div>
-        {error && <div style={{ color: '#f87171', marginTop: '0.5rem', fontSize: '0.85rem' }}>{error}</div>}
+        {error && <Alert variant="error" style={{ marginTop: '0.5rem' }}>{error}</Alert>}
         <div style={{ marginTop: '1rem' }}>
-          <button className="btn btn-primary" onClick={handleCreate} disabled={submitting}>
+          <Button variant="primary" onClick={handleCreate} disabled={submitting}>
             {submitting ? 'Scheduling...' : 'Schedule'}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
 
-      <div className="card">
+      <Card>
         <h3>Scheduled Jobs</h3>
         {loading ? (
-          <div className="loading-spinner">Loading...</div>
+          <Spinner />
         ) : jobs.length === 0 ? (
-          <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '1rem' }}>No scheduled jobs</div>
+          <div style={{ color: 'var(--color-text-2)', textAlign: 'center', padding: '1rem' }}>No scheduled jobs</div>
         ) : (
-          <table style={{ marginTop: '0.5rem' }}>
+          <table className="data-table" style={{ marginTop: '0.5rem' }}>
             <thead>
               <tr>
                 <th>ID</th>
@@ -263,16 +264,17 @@ export default function SchedulerPage() {
                   <td>
                     <span style={{ color: statusColor(job.status), fontWeight: 600 }}>{job.status}</span>
                   </td>
-                  <td style={{ color: 'var(--text-secondary)' }}>{job.notes || '-'}</td>
+                  <td style={{ color: 'var(--color-text-2)' }}>{job.notes || '-'}</td>
                   <td>
                     {job.status === 'PENDING' && (
-                      <button
-                        className="btn btn-secondary"
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', color: '#f87171' }}
                         onClick={() => handleCancel(job.id)}
                       >
                         Cancel
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>
@@ -280,7 +282,7 @@ export default function SchedulerPage() {
             </tbody>
           </table>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

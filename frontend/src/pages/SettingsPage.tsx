@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { exportConfig, importConfig, type ConfigExport } from '../api/configApi'
+import { Button, Card, PageHeader, Alert } from '../components/ui'
 
 export default function SettingsPage() {
   const [exporting, setExporting] = useState(false)
@@ -64,21 +65,21 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h1 className="page-title">Settings</h1>
+      <PageHeader title="Settings" breadcrumb="Système / Paramètres" />
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      <Card style={{ marginBottom: '1rem' }}>
         <h3>Export Configuration</h3>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0.5rem 0 1rem' }}>
+        <p style={{ color: 'var(--color-text-2)', fontSize: '0.85rem', margin: '0.5rem 0 1rem' }}>
           Export all threshold profiles, monitored servers, and app settings as a JSON file.
         </p>
-        <button className="btn btn-primary" onClick={handleExport} disabled={exporting}>
+        <Button variant="primary" onClick={handleExport} disabled={exporting}>
           {exporting ? 'Exporting...' : 'Export JSON'}
-        </button>
-      </div>
+        </Button>
+      </Card>
 
-      <div className="card">
+      <Card>
         <h3>Import Configuration</h3>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0.5rem 0 1rem' }}>
+        <p style={{ color: 'var(--color-text-2)', fontSize: '0.85rem', margin: '0.5rem 0 1rem' }}>
           Import a previously exported configuration. <strong>This replaces all existing settings.</strong>
         </p>
 
@@ -90,55 +91,55 @@ export default function SettingsPage() {
             style={{ display: 'none' }}
             id="import-file-input"
           />
-          <button
-            className="btn btn-secondary"
+          <Button
+            variant="secondary"
             onClick={() => document.getElementById('import-file-input')?.click()}
           >
             {importFile ? importFile.name : 'Choose JSON file'}
-          </button>
+          </Button>
         </div>
 
         {preview && (
-          <div style={{ background: 'var(--bg-hover)', borderRadius: '6px', padding: '1rem', marginBottom: '1rem' }}>
-            <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-heading)' }}>Preview</div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+          <div style={{ background: 'var(--color-surface-raised)', borderRadius: '6px', padding: '1rem', marginBottom: '1rem' }}>
+            <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--color-text)' }}>Preview</div>
+            <div style={{ color: 'var(--color-text-2)', fontSize: '0.85rem' }}>
               Exported: {preview.exportedAt}
             </div>
             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <span style={{ color: 'var(--text-primary)' }}>
+              <span style={{ color: 'var(--color-text)' }}>
                 <strong>{preview.thresholdProfiles?.length ?? 0}</strong> threshold profiles
               </span>
-              <span style={{ color: 'var(--text-primary)' }}>
+              <span style={{ color: 'var(--color-text)' }}>
                 <strong>{preview.monitoredServers?.length ?? 0}</strong> monitored servers
               </span>
-              <span style={{ color: 'var(--text-primary)' }}>
+              <span style={{ color: 'var(--color-text)' }}>
                 <strong>{preview.appSettings?.length ?? 0}</strong> app settings
               </span>
             </div>
-            <button
-              className="btn btn-primary"
+            <Button
+              variant="primary"
               style={{ marginTop: '1rem' }}
               onClick={handleImport}
               disabled={importing}
             >
               {importing ? 'Importing...' : 'Confirm Import'}
-            </button>
+            </Button>
           </div>
         )}
 
         {importResult && (
           <div style={{ background: '#1a3a2a', border: '1px solid #2a5a3a', borderRadius: '6px', padding: '1rem' }}>
             <div style={{ color: '#4ade80', fontWeight: 600 }}>Import successful</div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.3rem' }}>
+            <div style={{ color: 'var(--color-text-2)', fontSize: '0.85rem', marginTop: '0.3rem' }}>
               Imported {importResult.profiles} profiles, {importResult.servers} servers, {importResult.settings} settings.
             </div>
           </div>
         )}
 
         {error && (
-          <div style={{ color: '#f87171', marginTop: '0.5rem', fontSize: '0.85rem' }}>{error}</div>
+          <Alert variant="error" style={{ marginTop: '0.5rem' }}>{error}</Alert>
         )}
-      </div>
+      </Card>
     </div>
   )
 }
