@@ -1,0 +1,92 @@
+.ui-input-wrap { display: flex; flex-direction: column; gap: var(--sp-1); }
+
+.ui-input-label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.ui-input-field { position: relative; }
+
+.ui-input {
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition), box-shadow var(--transition);
+  outline: none;
+}
+
+.ui-input::placeholder { color: var(--color-text-3); }
+.ui-input--with-icon  { padding-left: var(--sp-8); }
+
+.ui-input:hover:not(:disabled) { border-color: var(--color-border-strong); }
+
+.ui-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-bg);
+}
+
+.ui-input:disabled {
+  background: var(--color-surface-raised);
+  color: var(--color-text-3);
+  cursor: not-allowed;
+}
+
+.ui-input-wrap--error .ui-input {
+  border-color: var(--color-error);
+}
+.ui-input-wrap--error .ui-input:focus {
+  box-shadow: 0 0 0 3px var(--color-error-bg);
+}
+
+.ui-input-icon {
+  position: absolute;
+  left: var(--sp-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-3);
+  pointer-events: none;
+  display: flex;
+}
+
+/* Select */
+.ui-select-field { position: relative; }
+
+.ui-select {
+  width: 100%;
+  padding: var(--sp-2) var(--sp-8) var(--sp-2) var(--sp-3);
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.ui-select:hover { border-color: var(--color-border-strong); }
+.ui-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-bg);
+}
+
+.ui-select-arrow {
+  position: absolute;
+  right: var(--sp-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-3);
+  pointer-events: none;
+  display: flex;
+}
+
+.ui-input-error  { font-size: var(--text-xs); color: var(--color-error); }
+.ui-input-helper { font-size: var(--text-xs); color: var(--color-text-3); }
