@@ -9,6 +9,8 @@ import {
   type SeleniumComparisonResult, type SeleniumMetricsSnapshot, type SeleniumTestRun,
 } from '../api/seleniumApi'
 import { getLabelColor } from '../utils/labelColors'
+import { Button, Card, PageHeader, Spinner, Alert } from '../components/ui'
+import { CHART_COLORS } from '../styles/chartColors'
 
 const METRIC_LABELS: Record<string, string> = {
   meanStepDuration: 'Mean Step (ms)',
@@ -97,12 +99,12 @@ export default function SeleniumComparePage() {
     return result
   }, [metricsA, metricsB])
 
-  if (loading) return <div className="loading-spinner">Loading comparison...</div>
-  if (error) return <div className="card" style={{ color: '#e94560' }}>{error}</div>
+  if (loading) return <Spinner label="Chargement de la comparaison..." />
+  if (error) return <Alert variant="error">{error}</Alert>
   if (!data) return null
 
   const { testA, testB, diffPercent, aggregatedA, aggregatedB } = data
-  const tooltipStyle = { background: 'var(--tooltip-bg)', border: '1px solid var(--border-color)' }
+  const tooltipStyle = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' }
   const labelsA = testA.labels ?? []
   const labelsB = testB.labels ?? []
 
@@ -127,15 +129,15 @@ export default function SeleniumComparePage() {
 
   function renderTestHeader(run: SeleniumTestRun, label: string, color: string, labels: string[]) {
     return (
-      <div className="card">
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>{label} (#{run.id})</div>
+      <Card>
+        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-2)', marginBottom: '0.3rem' }}>{label} (#{run.id})</div>
         <div style={{ fontWeight: 600, color, fontSize: '1.1rem' }}>{run.scriptClass}</div>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.3rem' }}>
+        <div style={{ color: 'var(--color-text-2)', fontSize: 'var(--text-sm)', marginTop: '0.3rem' }}>
           {run.browser} &middot; {run.instances} instance{run.instances > 1 ? 's' : ''}
           {run.loops > 1 && <> &middot; {run.loops} loops</>}
           {run.version && <> &middot; v{run.version}</>}
         </div>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+        <div style={{ color: 'var(--color-text-2)', fontSize: 'var(--text-sm)', marginTop: '0.2rem' }}>
           {formatDate(run.startTime)} &middot; {formatDuration(run.startTime, run.endTime)}
         </div>
         <div style={{ marginTop: '0.3rem', display: 'flex', gap: '0.2rem', flexWrap: 'wrap' }}>
@@ -143,61 +145,66 @@ export default function SeleniumComparePage() {
             <span key={l} className="label-badge" style={{ borderColor: getLabelColor(l), color: getLabelColor(l) }}>{l}</span>
           ))}
         </div>
-      </div>
+      </Card>
     )
   }
 
   return (
     <div>
-      <div className="flex-row" style={{ marginBottom: '1rem' }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Selenium Comparison</h1>
-        <a href={`/api/selenium/compare/export/pdf?ids=${testA.id},${testB.id}`} className="btn btn-secondary">Download PDF</a>
-        <button className="btn btn-secondary" onClick={() => navigate('/selenium/history')}>Back to History</button>
-      </div>
+      <PageHeader
+        title="Selenium Comparison"
+        breadcrumb="Selenium / Comparaison"
+        actions={
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <a href={`/api/selenium/compare/export/pdf?ids=${testA.id},${testB.id}`} className="ui-btn ui-btn--secondary ui-btn--sm">Download PDF</a>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/selenium/history')}>Back to History</Button>
+          </div>
+        }
+      />
 
       {/* Test headers */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-        {renderTestHeader(testA, 'Test A', '#2980b9', labelsA)}
-        {renderTestHeader(testB, 'Test B', '#e94560', labelsB)}
+        {renderTestHeader(testA, 'Test A', CHART_COLORS.primary, labelsA)}
+        {renderTestHeader(testB, 'Test B', CHART_COLORS.error, labelsB)}
       </div>
 
       {/* Charts */}
       <div className="charts-grid" style={{ marginBottom: '1rem' }}>
-        <div className="card">
+        <Card>
           <h3 style={{ marginBottom: '0.5rem' }}>Step Durations</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={durationChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-              <XAxis dataKey="name" stroke="var(--text-secondary)" tick={{ fontSize: 12 }} />
-              <YAxis stroke="var(--text-secondary)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="name" stroke="var(--color-text-2)" tick={{ fontSize: 12 }} />
+              <YAxis stroke="var(--color-text-2)" />
               <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${Number(v).toFixed(1)} ms`]} />
               <Legend />
-              <Bar dataKey="Test A" fill="#2980b9" />
-              <Bar dataKey="Test B" fill="#e94560" />
+              <Bar dataKey="Test A" fill={CHART_COLORS.primary} />
+              <Bar dataKey="Test B" fill={CHART_COLORS.error} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
 
-        <div className="card">
+        <Card>
           <h3 style={{ marginBottom: '0.5rem' }}>Throughput</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={throughputData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-              <XAxis dataKey="name" stroke="var(--text-secondary)" tick={{ fontSize: 12 }} />
-              <YAxis stroke="var(--text-secondary)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="name" stroke="var(--color-text-2)" tick={{ fontSize: 12 }} />
+              <YAxis stroke="var(--color-text-2)" />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend />
-              <Bar dataKey="Test A" fill="#2980b9" />
-              <Bar dataKey="Test B" fill="#e94560" />
+              <Bar dataKey="Test A" fill={CHART_COLORS.primary} />
+              <Bar dataKey="Test B" fill={CHART_COLORS.error} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
       </div>
 
       {/* Diff table */}
-      <div className="card">
+      <Card>
         <h3 style={{ marginBottom: '0.5rem' }}>Detailed Comparison</h3>
-        <table>
+        <table className="data-table">
           <thead>
             <tr>
               <th>Metric</th>
@@ -224,70 +231,70 @@ export default function SeleniumComparePage() {
                   <td>{valA != null ? valA.toFixed(1) : '-'}</td>
                   <td>{valB != null ? valB.toFixed(1) : '-'}</td>
                   <td style={{
-                    color: improved ? '#27ae60' : degraded ? '#e94560' : 'var(--text-secondary)',
+                    color: improved ? 'var(--color-success)' : degraded ? 'var(--color-error)' : 'var(--color-text-2)',
                     fontWeight: 600,
                   }}>
                     {diff != null ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : '-'}
                   </td>
                   <td>
-                    {improved && <span style={{ color: '#27ae60' }}>Better</span>}
-                    {degraded && <span style={{ color: '#e94560' }}>Worse</span>}
-                    {!improved && !degraded && <span style={{ color: 'var(--text-secondary)' }}>-</span>}
+                    {improved && <span style={{ color: 'var(--color-success)' }}>Better</span>}
+                    {degraded && <span style={{ color: 'var(--color-error)' }}>Worse</span>}
+                    {!improved && !degraded && <span style={{ color: 'var(--color-text-2)' }}>-</span>}
                   </td>
                 </tr>
               )
             })}
           </tbody>
         </table>
-      </div>
+      </Card>
 
       {/* Time-Series Overlay */}
       {overlayData.length > 0 && (
         <div className="charts-grid" style={{ marginTop: '1rem' }}>
-          <div className="card">
+          <Card>
             <h3 style={{ marginBottom: '0.5rem' }}>Iterations/s Over Time</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={overlayData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--color-text-2)" />
                 <Tooltip contentStyle={tooltipStyle} labelFormatter={(l) => formatTime(Number(l))} />
                 <Legend />
-                <Line type="monotone" dataKey="ipsA" stroke="#2980b9" dot={false} name="Test A" connectNulls />
-                <Line type="monotone" dataKey="ipsB" stroke="#e94560" dot={false} name="Test B" connectNulls />
+                <Line type="monotone" dataKey="ipsA" stroke={CHART_COLORS.primary} dot={false} name="Test A" connectNulls />
+                <Line type="monotone" dataKey="ipsB" stroke={CHART_COLORS.error} dot={false} name="Test B" connectNulls />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
 
-          <div className="card">
+          <Card>
             <h3 style={{ marginBottom: '0.5rem' }}>p95 Step Duration Over Time</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={overlayData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--color-text-2)" />
                 <Tooltip contentStyle={tooltipStyle} labelFormatter={(l) => formatTime(Number(l))} formatter={(v) => [`${Number(v).toFixed(0)} ms`]} />
                 <Legend />
-                <Line type="monotone" dataKey="p95A" stroke="#2980b9" dot={false} name="Test A" connectNulls />
-                <Line type="monotone" dataKey="p95B" stroke="#e94560" dot={false} name="Test B" connectNulls />
+                <Line type="monotone" dataKey="p95A" stroke={CHART_COLORS.primary} dot={false} name="Test A" connectNulls />
+                <Line type="monotone" dataKey="p95B" stroke={CHART_COLORS.error} dot={false} name="Test B" connectNulls />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
 
-          <div className="card">
+          <Card>
             <h3 style={{ marginBottom: '0.5rem' }}>Active Browsers Over Time</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={overlayData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--color-text-2)" />
                 <Tooltip contentStyle={tooltipStyle} labelFormatter={(l) => formatTime(Number(l))} />
                 <Legend />
-                <Line type="monotone" dataKey="browsersA" stroke="#2980b9" dot={false} name="Test A" connectNulls />
-                <Line type="monotone" dataKey="browsersB" stroke="#e94560" dot={false} name="Test B" connectNulls />
+                <Line type="monotone" dataKey="browsersA" stroke={CHART_COLORS.primary} dot={false} name="Test A" connectNulls />
+                <Line type="monotone" dataKey="browsersB" stroke={CHART_COLORS.error} dot={false} name="Test B" connectNulls />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
         </div>
       )}
     </div>

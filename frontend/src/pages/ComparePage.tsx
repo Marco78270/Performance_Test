@@ -7,6 +7,8 @@ import {
 import { fetchComparison, type ComparisonResult } from '../api/comparisonApi'
 import { fetchTestMetrics, type TestRun, type MetricsSnapshot } from '../api/testRunApi'
 import { getLabelColor } from '../utils/labelColors'
+import { Button, Card, PageHeader, Spinner, Alert } from '../components/ui'
+import { CHART_COLORS } from '../styles/chartColors'
 
 const METRIC_LABELS: Record<string, string> = {
   meanResponseTime: 'Mean RT (ms)',
@@ -20,13 +22,13 @@ const METRIC_LABELS: Record<string, string> = {
 
 const RT_METRICS = ['meanResponseTime', 'p50ResponseTime', 'p75ResponseTime', 'p95ResponseTime', 'p99ResponseTime']
 
-function formatDate(d: string | null) {
+function formatDate(d: number | null) {
   return d ? new Date(d).toLocaleString() : '-'
 }
 
 function formatDuration(run: TestRun): string {
   if (!run.startTime || !run.endTime) return '-'
-  const ms = new Date(run.endTime).getTime() - new Date(run.startTime).getTime()
+  const ms = run.endTime - run.startTime
   const sec = Math.floor(ms / 1000)
   if (sec < 60) return `${sec}s`
   const min = Math.floor(sec / 60)
@@ -104,12 +106,12 @@ export default function ComparePage() {
     return result
   }, [metricsA, metricsB])
 
-  if (loading) return <div className="loading-spinner">Loading comparison...</div>
-  if (error) return <div className="card" style={{ color: '#e94560' }}>{error}</div>
+  if (loading) return <Spinner label="Chargement de la comparaison..." />
+  if (error) return <Alert variant="error">{error}</Alert>
   if (!data) return null
 
   const { testA, testB, diffPercent } = data
-  const tooltipStyle = { background: 'var(--tooltip-bg)', border: '1px solid var(--border-color)' }
+  const tooltipStyle = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' }
 
   const rtChartData = RT_METRICS.map(m => ({
     name: METRIC_LABELS[m],
@@ -132,18 +134,23 @@ export default function ComparePage() {
 
   return (
     <div>
-      <div className="flex-row" style={{ marginBottom: '1rem' }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Test Comparison</h1>
-        <a href={`/api/tests/compare/export/pdf?ids=${testA.id},${testB.id}`} className="btn btn-secondary">Download PDF</a>
-        <button className="btn btn-secondary" onClick={() => navigate('/history')}>Back to History</button>
-      </div>
+      <PageHeader
+        title="Test Comparison"
+        breadcrumb="Gatling / Comparaison"
+        actions={
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <a href={`/api/tests/compare/export/pdf?ids=${testA.id},${testB.id}`} className="ui-btn ui-btn--secondary ui-btn--sm">Download PDF</a>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/history')}>Back to History</Button>
+          </div>
+        }
+      />
 
       {/* Test headers */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-        <div className="card">
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Test A (#{testA.id})</div>
-          <div style={{ fontWeight: 600, color: '#2980b9', fontSize: '1.1rem' }}>{testA.simulationClass}</div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.3rem' }}>
+        <Card>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-2)', marginBottom: '0.3rem' }}>Test A (#{testA.id})</div>
+          <div style={{ fontWeight: 600, color: CHART_COLORS.primary, fontSize: '1.1rem' }}>{testA.simulationClass}</div>
+          <div style={{ color: 'var(--color-text-2)', fontSize: 'var(--text-sm)', marginTop: '0.3rem' }}>
             {formatDate(testA.startTime)} &middot; {formatDuration(testA)}
             {testA.version && <> &middot; v{testA.version}</>}
           </div>
@@ -152,11 +159,11 @@ export default function ComparePage() {
               <span key={l} className="label-badge" style={{ borderColor: getLabelColor(l), color: getLabelColor(l) }}>{l}</span>
             ))}
           </div>
-        </div>
-        <div className="card">
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Test B (#{testB.id})</div>
-          <div style={{ fontWeight: 600, color: '#e94560', fontSize: '1.1rem' }}>{testB.simulationClass}</div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.3rem' }}>
+        </Card>
+        <Card>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-2)', marginBottom: '0.3rem' }}>Test B (#{testB.id})</div>
+          <div style={{ fontWeight: 600, color: CHART_COLORS.error, fontSize: '1.1rem' }}>{testB.simulationClass}</div>
+          <div style={{ color: 'var(--color-text-2)', fontSize: 'var(--text-sm)', marginTop: '0.3rem' }}>
             {formatDate(testB.startTime)} &middot; {formatDuration(testB)}
             {testB.version && <> &middot; v{testB.version}</>}
           </div>
@@ -165,46 +172,46 @@ export default function ComparePage() {
               <span key={l} className="label-badge" style={{ borderColor: getLabelColor(l), color: getLabelColor(l) }}>{l}</span>
             ))}
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Charts */}
       <div className="charts-grid" style={{ marginBottom: '1rem' }}>
-        <div className="card">
+        <Card>
           <h3 style={{ marginBottom: '0.5rem' }}>Response Times</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={rtChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-              <XAxis dataKey="name" stroke="var(--text-secondary)" tick={{ fontSize: 12 }} />
-              <YAxis stroke="var(--text-secondary)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="name" stroke="var(--color-text-2)" tick={{ fontSize: 12 }} />
+              <YAxis stroke="var(--color-text-2)" />
               <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${Number(v).toFixed(1)} ms`]} />
               <Legend />
-              <Bar dataKey="Test A" fill="#2980b9" />
-              <Bar dataKey="Test B" fill="#e94560" />
+              <Bar dataKey="Test A" fill={CHART_COLORS.primary} />
+              <Bar dataKey="Test B" fill={CHART_COLORS.error} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
 
-        <div className="card">
+        <Card>
           <h3 style={{ marginBottom: '0.5rem' }}>Throughput</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={throughputData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-              <XAxis dataKey="name" stroke="var(--text-secondary)" tick={{ fontSize: 12 }} />
-              <YAxis stroke="var(--text-secondary)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="name" stroke="var(--color-text-2)" tick={{ fontSize: 12 }} />
+              <YAxis stroke="var(--color-text-2)" />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend />
-              <Bar dataKey="Test A" fill="#2980b9" />
-              <Bar dataKey="Test B" fill="#e94560" />
+              <Bar dataKey="Test A" fill={CHART_COLORS.primary} />
+              <Bar dataKey="Test B" fill={CHART_COLORS.error} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
       </div>
 
       {/* Diff table */}
-      <div className="card">
+      <Card>
         <h3 style={{ marginBottom: '0.5rem' }}>Detailed Comparison</h3>
-        <table>
+        <table className="data-table">
           <thead>
             <tr>
               <th>Metric</th>
@@ -219,7 +226,6 @@ export default function ComparePage() {
               const valA = getMetricValue(testA, metric)
               const valB = getMetricValue(testB, metric)
               const diff = diffPercent[metric]
-              // For RT and error rate: lower is better. For totalRequests: neutral (volume metric).
               const hasVerdict = metric !== 'totalRequests'
               const improved = hasVerdict && diff != null ? diff < 0 : null
               const degraded = hasVerdict && diff != null ? diff > 0 : null
@@ -230,70 +236,70 @@ export default function ComparePage() {
                   <td>{valA != null ? valA.toFixed(1) : '-'}</td>
                   <td>{valB != null ? valB.toFixed(1) : '-'}</td>
                   <td style={{
-                    color: improved ? '#27ae60' : degraded ? '#e94560' : 'var(--text-secondary)',
+                    color: improved ? 'var(--color-success)' : degraded ? 'var(--color-error)' : 'var(--color-text-2)',
                     fontWeight: 600,
                   }}>
                     {diff != null ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : '-'}
                   </td>
                   <td>
-                    {improved && <span style={{ color: '#27ae60' }}>&#9650; Better</span>}
-                    {degraded && <span style={{ color: '#e94560' }}>&#9660; Worse</span>}
-                    {!improved && !degraded && <span style={{ color: 'var(--text-secondary)' }}>-</span>}
+                    {improved && <span style={{ color: 'var(--color-success)' }}>▲ Better</span>}
+                    {degraded && <span style={{ color: 'var(--color-error)' }}>▼ Worse</span>}
+                    {!improved && !degraded && <span style={{ color: 'var(--color-text-2)' }}>-</span>}
                   </td>
                 </tr>
               )
             })}
           </tbody>
         </table>
-      </div>
+      </Card>
 
       {/* Time-Series Overlay */}
       {overlayData.length > 0 && (
         <div className="charts-grid" style={{ marginTop: '1rem' }}>
-          <div className="card">
+          <Card>
             <h3 style={{ marginBottom: '0.5rem' }}>Requests/s Over Time</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={overlayData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--color-text-2)" />
                 <Tooltip contentStyle={tooltipStyle} labelFormatter={(l) => formatTime(Number(l))} />
                 <Legend />
-                <Line type="monotone" dataKey="rpsA" stroke="#2980b9" dot={false} name="Test A" connectNulls />
-                <Line type="monotone" dataKey="rpsB" stroke="#e94560" dot={false} name="Test B" connectNulls />
+                <Line type="monotone" dataKey="rpsA" stroke={CHART_COLORS.primary} dot={false} name="Test A" connectNulls />
+                <Line type="monotone" dataKey="rpsB" stroke={CHART_COLORS.error} dot={false} name="Test B" connectNulls />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
 
-          <div className="card">
+          <Card>
             <h3 style={{ marginBottom: '0.5rem' }}>p95 Response Time Over Time</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={overlayData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--color-text-2)" />
                 <Tooltip contentStyle={tooltipStyle} labelFormatter={(l) => formatTime(Number(l))} formatter={(v) => [`${Number(v).toFixed(0)} ms`]} />
                 <Legend />
-                <Line type="monotone" dataKey="p95A" stroke="#2980b9" dot={false} name="Test A" connectNulls />
-                <Line type="monotone" dataKey="p95B" stroke="#e94560" dot={false} name="Test B" connectNulls />
+                <Line type="monotone" dataKey="p95A" stroke={CHART_COLORS.primary} dot={false} name="Test A" connectNulls />
+                <Line type="monotone" dataKey="p95B" stroke={CHART_COLORS.error} dot={false} name="Test B" connectNulls />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
 
-          <div className="card">
+          <Card>
             <h3 style={{ marginBottom: '0.5rem' }}>Active Users Over Time</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={overlayData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="time" stroke="var(--text-secondary)" tickFormatter={formatTime} />
-                <YAxis stroke="var(--text-secondary)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="time" stroke="var(--color-text-2)" tickFormatter={formatTime} />
+                <YAxis stroke="var(--color-text-2)" />
                 <Tooltip contentStyle={tooltipStyle} labelFormatter={(l) => formatTime(Number(l))} />
                 <Legend />
-                <Line type="monotone" dataKey="usersA" stroke="#2980b9" dot={false} name="Test A" connectNulls />
-                <Line type="monotone" dataKey="usersB" stroke="#e94560" dot={false} name="Test B" connectNulls />
+                <Line type="monotone" dataKey="usersA" stroke={CHART_COLORS.primary} dot={false} name="Test A" connectNulls />
+                <Line type="monotone" dataKey="usersB" stroke={CHART_COLORS.error} dot={false} name="Test B" connectNulls />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
         </div>
       )}
     </div>
