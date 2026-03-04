@@ -1,0 +1,88 @@
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition),
+              color var(--transition), box-shadow var(--transition);
+  white-space: nowrap;
+  user-select: none;
+  text-decoration: none;
+}
+
+.ui-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Sizes */
+.ui-btn--sm  { padding: var(--sp-1) var(--sp-3); font-size: var(--text-sm);  }
+.ui-btn--md  { padding: var(--sp-2) var(--sp-4); font-size: var(--text-base); }
+.ui-btn--lg  { padding: var(--sp-3) var(--sp-6); font-size: var(--text-md);  }
+
+/* Variants */
+.ui-btn--primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+.ui-btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.ui-btn--secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+.ui-btn--secondary:hover:not(:disabled) {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
+.ui-btn--ghost {
+  background: transparent;
+  color: var(--color-text-2);
+  border-color: transparent;
+}
+.ui-btn--ghost:hover:not(:disabled) {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.ui-btn--danger {
+  background: var(--color-error);
+  color: #fff;
+  border-color: var(--color-error);
+}
+.ui-btn--danger:hover:not(:disabled) {
+  background: #B91C1C;
+  border-color: #B91C1C;
+}
+
+/* States */
+.ui-btn:disabled, .ui-btn--loading {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Icon */
+.ui-btn__icon { display: flex; align-items: center; flex-shrink: 0; }
+
+/* Spinner */
+.ui-btn__spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btn-spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
