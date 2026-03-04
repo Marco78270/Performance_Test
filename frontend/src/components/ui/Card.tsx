@@ -5,12 +5,13 @@ interface CardProps {
   variant?: 'default' | 'elevated' | 'flat'
   padding?: 'none' | 'sm' | 'md' | 'lg'
   className?: string
+  style?: React.CSSProperties
   children: React.ReactNode
 }
 
-export function Card({ variant = 'default', padding = 'md', className = '', children }: CardProps) {
+export function Card({ variant = 'default', padding = 'md', className = '', style, children }: CardProps) {
   return (
-    <div className={`ui-card ui-card--${variant} ui-card--pad-${padding} ${className}`}>
+    <div className={`ui-card ui-card--${variant} ui-card--pad-${padding} ${className}`} style={style}>
       {children}
     </div>
   )

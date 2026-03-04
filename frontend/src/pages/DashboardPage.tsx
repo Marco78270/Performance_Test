@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { Play } from 'lucide-react'
 import { fetchSimulationClasses } from '../api/simulationApi'
 import { launchTest, fetchRunningTest, fetchQueue, cancelQueuedTest, fetchSummary, type TestRun, type DashboardSummary } from '../api/testRunApi'
 import { useQueueWebSocket } from '../hooks/useWebSocket'
@@ -8,6 +9,8 @@ import {
   fetchSeleniumClasses, fetchGridStatus, launchSeleniumTest,
   fetchSeleniumTests, type SeleniumTestRun,
 } from '../api/seleniumApi'
+import { Button, Card, KpiCard, PageHeader, Spinner, Alert, StatusBadge } from '../components/ui'
+import { CHART_COLORS } from '../styles/chartColors'
 
 type Tab = 'gatling' | 'selenium'
 
@@ -137,72 +140,62 @@ export default function DashboardPage() {
   if (gatlingLoading && seLoading) {
     return (
       <div>
-        <h1 className="page-title">Dashboard</h1>
-        <div className="loading-spinner">Loading...</div>
+        <PageHeader title="Dashboard" />
+        <Spinner label="Chargement..." />
       </div>
     )
   }
 
   return (
     <div>
-      <h1 className="page-title">Dashboard</h1>
+      <PageHeader title="Dashboard" />
 
       {summary && (
-        <div className="flex-row-wrap" style={{ marginBottom: '1rem' }}>
-          <div className="card" style={{ flex: 1, textAlign: 'center', minWidth: '140px' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Tests (24h)</div>
-            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{summary.tests24h}</div>
-          </div>
-          <div className="card" style={{ flex: 1, textAlign: 'center', minWidth: '140px' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Success Rate (24h)</div>
-            <div style={{ fontSize: '1.5rem', color: summary.successRate24h >= 80 ? '#27ae60' : '#e94560' }}>
-              {summary.successRate24h}%
-            </div>
-          </div>
-          <div className="card" style={{ flex: 1, textAlign: 'center', minWidth: '140px' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Avg RT (24h)</div>
-            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>
-              {summary.avgResponseTime24h != null ? `${summary.avgResponseTime24h} ms` : '-'}
-            </div>
-          </div>
-          <div className="card" style={{ flex: 1, textAlign: 'center', minWidth: '140px' }}>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Total Tests</div>
-            <div style={{ fontSize: '1.5rem', color: 'var(--text-heading)' }}>{summary.totalTests}</div>
-          </div>
+        <div className="kpi-grid">
+          <KpiCard label="Tests (24h)" value={summary.tests24h} />
+          <KpiCard
+            label="Success Rate (24h)"
+            value={`${summary.successRate24h}%`}
+            variant={summary.successRate24h >= 80 ? 'success' : 'error'}
+          />
+          <KpiCard
+            label="Avg RT (24h)"
+            value={summary.avgResponseTime24h != null ? summary.avgResponseTime24h : '-'}
+            unit={summary.avgResponseTime24h != null ? 'ms' : undefined}
+          />
+          <KpiCard label="Total Tests" value={summary.totalTests} />
         </div>
       )}
 
       {/* Onglets */}
       <div style={{ display: 'flex', gap: '2px', marginBottom: '1rem' }}>
-        <button
-          className={`btn ${activeTab === 'gatling' ? 'btn-primary' : 'btn-secondary'}`}
-          style={{ borderRadius: '6px 0 0 6px', padding: '0.4rem 1.2rem' }}
+        <Button
+          variant={activeTab === 'gatling' ? 'primary' : 'secondary'}
+          size="sm"
           onClick={() => setActiveTab('gatling')}
-        >Gatling</button>
-        <button
-          className={`btn ${activeTab === 'selenium' ? 'btn-primary' : 'btn-secondary'}`}
-          style={{ borderRadius: '0 6px 6px 0', padding: '0.4rem 1.2rem' }}
+          style={{ borderRadius: '6px 0 0 6px' }}
+        >Gatling</Button>
+        <Button
+          variant={activeTab === 'selenium' ? 'primary' : 'secondary'}
+          size="sm"
           onClick={() => setActiveTab('selenium')}
-        >Selenium</button>
+          style={{ borderRadius: '0 6px 6px 0' }}
+        >Selenium</Button>
       </div>
 
       {activeTab === 'gatling' && (
         <>
           {running && (
-            <div className="card">
-              <h3>Test in progress</h3>
-              <p>
-                <strong>{running.simulationClass}</strong>{' '}
-                <span className="status-badge status-RUNNING">RUNNING</span>
-              </p>
-              <button className="btn btn-primary" style={{ marginTop: '0.5rem' }}
-                onClick={() => navigate(`/test/${running.id}`)}>
-                View live
-              </button>
-            </div>
+            <Card style={{ marginBottom: '1rem' }}>
+              <strong>{running.simulationClass}</strong>{' '}
+              <StatusBadge status="RUNNING" />
+              <div style={{ marginTop: '0.5rem' }}>
+                <Button size="sm" onClick={() => navigate(`/test/${running.id}`)}>View live</Button>
+              </div>
+            </Card>
           )}
 
-          <div className="card">
+          <Card>
             <h3>Launch a test</h3>
             <div className="flex-row" style={{ marginTop: '0.8rem' }}>
               <select value={selected} onChange={(e) => setSelected(e.target.value)}>
@@ -272,21 +265,19 @@ export default function DashboardPage() {
             <InjectionProfileChart users={users} rampUp={rampUp} rampUpDuration={rampUpDuration} duration={duration} loop={loop} />
 
             <div style={{ marginTop: '0.8rem' }}>
-              <button className="btn btn-primary" onClick={handleGatlingLaunch} disabled={!selected || launching}>
-                {launching ? 'Launching...' : 'Launch'}
-              </button>
+              <Button icon={<Play size={14} />} onClick={handleGatlingLaunch} disabled={!selected} loading={launching}>
+                Launch
+              </Button>
             </div>
-            {gatlingError && <p style={{ color: '#e94560', marginTop: '0.5rem' }}>{gatlingError}</p>}
-          </div>
+            {gatlingError && <div style={{ marginTop: '0.5rem' }}><Alert variant="error">{gatlingError}</Alert></div>}
+          </Card>
 
           {queuedTests.length > 0 && (
-            <div className="card">
+            <Card style={{ marginTop: '1rem' }}>
               <h3>Queued Tests ({queuedTests.length})</h3>
-              <table style={{ marginTop: '0.5rem' }}>
+              <table className="data-table" style={{ marginTop: '0.5rem' }}>
                 <thead>
-                  <tr>
-                    <th>ID</th><th>Simulation</th><th>Version</th><th>Actions</th>
-                  </tr>
+                  <tr><th>ID</th><th>Simulation</th><th>Version</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                   {queuedTests.map((t) => (
@@ -295,24 +286,23 @@ export default function DashboardPage() {
                       <td>{t.simulationClass}</td>
                       <td>{t.version || '-'}</td>
                       <td>
-                        <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', color: '#e94560' }}
-                          onClick={async () => {
-                            await cancelQueuedTest(t.id)
-                            setQueuedTests(prev => prev.filter(q => q.id !== t.id))
-                          }}>Cancel</button>
+                        <Button variant="danger" size="sm" onClick={async () => {
+                          await cancelQueuedTest(t.id)
+                          setQueuedTests(prev => prev.filter(q => q.id !== t.id))
+                        }}>Cancel</Button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
+            </Card>
           )}
         </>
       )}
 
       {activeTab === 'selenium' && (
         <>
-          <div className="card">
+          <Card>
             <h3>Launch Selenium Test</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
               <div>
@@ -368,17 +358,17 @@ export default function DashboardPage() {
             <div className="flex-row" style={{ marginTop: '1rem', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
                 <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: statusColor, display: 'inline-block' }} />
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Drivers: {gridStatus.status}</span>
+                <span style={{ color: 'var(--color-text-2)', fontSize: '0.85rem' }}>Drivers: {gridStatus.status}</span>
               </div>
-              <button className="btn btn-primary" onClick={handleSeleniumLaunch} disabled={seLaunching || !scriptClass}>
-                {seLaunching ? 'Launching...' : 'Launch Test'}
-              </button>
+              <Button icon={<Play size={14} />} onClick={handleSeleniumLaunch} disabled={!scriptClass} loading={seLaunching}>
+                Launch Test
+              </Button>
             </div>
-            {seError && <div style={{ color: '#f87171', marginTop: '0.5rem', fontSize: '0.85rem' }}>{seError}</div>}
-          </div>
+            {seError && <div style={{ marginTop: '0.5rem' }}><Alert variant="error">{seError}</Alert></div>}
+          </Card>
 
           {recentSeTests.length > 0 && (
-            <div className="card" style={{ marginTop: '1rem' }}>
+            <Card style={{ marginTop: '1rem' }}>
               <h3>Recent Selenium Tests</h3>
               <table className="data-table" style={{ marginTop: '0.5rem' }}>
                 <thead>
@@ -394,9 +384,7 @@ export default function DashboardPage() {
                       <td>{t.browser}</td>
                       <td>{t.instances}</td>
                       <td>{t.loops ?? 1}</td>
-                      <td>
-                        <span className={`status-badge status-${t.status.toLowerCase()}`}>{t.status}</span>
-                      </td>
+                      <td><StatusBadge status={t.status} /></td>
                       <td>
                         {t.status !== 'QUEUED' && t.status !== 'RUNNING' && (
                           <span>
@@ -408,14 +396,13 @@ export default function DashboardPage() {
                         )}
                       </td>
                       <td>
-                        <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem' }}
-                          onClick={() => navigate(`/selenium/test/${t.id}`)}>View</button>
+                        <Button variant="secondary" size="sm" onClick={() => navigate(`/selenium/test/${t.id}`)}>View</Button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
+            </Card>
           )}
         </>
       )}
@@ -477,7 +464,7 @@ function InjectionProfileChart({ users, rampUp, rampUpDuration, duration, loop }
             formatter={(value: number | undefined) => [value != null ? value.toFixed(1) : '0', 'users/s']}
             labelFormatter={(label) => `${label}s`}
           />
-          <Area type="linear" dataKey="usersPerSec" stroke="#00d2ff" fill="#00d2ff" fillOpacity={0.15} strokeWidth={2} />
+          <Area type="linear" dataKey="usersPerSec" stroke={CHART_COLORS.users} fill={CHART_COLORS.users} fillOpacity={0.15} strokeWidth={2} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
